@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+    <title>锂离子电池性能指标分析系统 | 储能材料计算平台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Times New Roman', 'Georgia', '宋体', 'SimSun', 'Palatino', 'STSong', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #f0f4f9;
+            color: #1e2f3e;
+            line-height: 1.5;
+            padding: 20px 16px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            border-bottom: 3px solid #2c6e4f;
+            margin-bottom: 1.8rem;
+            padding-bottom: 0.8rem;
+        }
+
+        .header h1 {
+            font-size: clamp(1.5rem, 5vw, 1.9rem);
+            font-weight: 600;
+            letter-spacing: -0.2px;
+            color: #1b3b4f;
+            word-break: break-word;
+        }
+
+        .header .sub {
+            font-size: clamp(0.75rem, 3vw, 0.9rem);
+            color: #4a6f8a;
+            font-style: italic;
+            margin-top: 0.25rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.8rem;
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: 1rem;
+            padding: 1.2rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+            border: 1px solid #e2e9f0;
+            transition: box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        .card h2 {
+            font-size: clamp(1.2rem, 4vw, 1.45rem);
+            font-weight: 600;
+            border-left: 4px solid #2c6e4f;
+            padding-left: 0.75rem;
+            margin-bottom: 1rem;
+            color: #1b4b5e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 0.9rem;
+        }
+
+        label {
+            font-weight: 500;
+            display: block;
+            margin-bottom: 0.3rem;
+            font-size: 0.85rem;
+            color: #2c4b66;
+        }
+
+        /* ========= 关键修复：确保移动端检索输入框文字清晰可见 ========= */
+        input, select, datalist {
+            width: 100%;
+            padding: 0.6rem 0.8rem;
+            border: 1px solid #cbdde9;
+            border-radius: 0.75rem;
+            font-size: 16px;  /* 防止iOS缩放时文字异常 */
+            font-family: monospace;
+            background: #ffffff;
+            color: #1e2f3e !important;      /* 强制深色文字 */
+            -webkit-text-fill-color: #1e2f3e !important; /* 覆盖移动端默认样式 */
+            text-fill-color: #1e2f3e !important;
+            opacity: 1;
+            transition: 0.2s;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        /* 针对datalist输入框的特殊处理 */
+        input[list] {
+            color: #1e2f3e !important;
+            background: #ffffff !important;
+        }
+
+        /* 占位符颜色浅但文字可见 */
+        input::placeholder {
+            color: #6b8eaa;
+            opacity: 0.8;
+        }
+
+        /* 确保下拉选项文字深色 */
+        option {
+            color: #1e2f3e;
+            background: white;
+            font-size: 0.9rem;
+            padding: 0.5rem;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #2c6e4f;
+            box-shadow: 0 0 0 3px rgba(44, 110, 79, 0.15);
+        }
+
+        /* 醒目按钮样式 */
+        button {
+            background: linear-gradient(135deg, #1e7e54 0%, #146b46 100%);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 2.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+            margin-top: 0.2rem;
+            margin-right: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            letter-spacing: 0.3px;
+            min-height: 40px;
+        }
+
+        button.secondary {
+            background: linear-gradient(135deg, #2c8c6c, #1f6b4e);
+        }
+
+        button.small,
+        button.reset-btn {
+            background: #f0f2f5;
+            color: #1f5a6e;
+            border: 1px solid #cbdde9;
+            box-shadow: none;
+            font-weight: 500;
+            min-height: 36px;
+        }
+
+        button.reset-btn {
+            background: #e2e8f0;
+            color: #2c4f6e;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
+            filter: brightness(1.02);
+        }
+
+        button.small:hover,
+        button.reset-btn:hover {
+            background: #e0e6ed;
+            transform: translateY(-1px);
+        }
+
+        .result-box {
+            background: #f2f6fa;
+            padding: 0.8rem;
+            border-radius: 0.75rem;
+            margin-top: 0.9rem;
+            border-left: 3px solid #2c6e4f;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9rem;
+            font-weight: 500;
+            word-break: break-word;
+        }
+
+        .formula {
+            font-family: 'Courier New', monospace;
+            background: #f0f4f8;
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            display: inline-block;
+        }
+
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            border-bottom: 1px solid #cfdfed;
+            margin-bottom: 1rem;
+            gap: 0.3rem;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 0.5rem 0.9rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #4f6f8a;
+            border-radius: 2rem 2rem 0 0;
+            cursor: pointer;
+            box-shadow: none;
+            background: transparent;
+            min-height: auto;
+        }
+
+        .tab-btn.active {
+            background: #eaf4ef;
+            color: #1b5e3f;
+            border-bottom: 2px solid #2c6e4f;
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active-pane {
+            display: block;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            margin-top: 0.5rem;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7rem;
+            background: #fff;
+            min-width: 500px;
+        }
+
+        th {
+            background: #eef3f7;
+            padding: 10px 6px;
+            border-bottom: 1px solid #ced9e3;
+            font-weight: 600;
+        }
+
+        td {
+            border-bottom: 1px solid #e6edf4;
+            padding: 8px 6px;
+            vertical-align: top;
+        }
+
+        .material-badge {
+            background: #e3efe9;
+            border-radius: 14px;
+            padding: 0.2rem 0.6rem;
+            font-size: 0.7rem;
+            display: inline-block;
+        }
+
+        .flex-btns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 12px 0 6px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            font-size: 0.7rem;
+            color: #6d8faa;
+            border-top: 1px solid #dce5ef;
+            padding-top: 1.2rem;
+        }
+
+        .info-tip {
+            font-size: 0.7rem;
+            color: #5b7e9a;
+            margin-top: 0.5rem;
+        }
+
+        .error-msg {
+            color: #c0392b;
+            font-weight: normal;
+        }
+
+        .search-box {
+            margin-bottom: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .search-box input {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .collapse-btn {
+            background: #2c6e4f;
+            border: none;
+            border-radius: 2rem;
+            padding: 0.3rem 0.9rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: 0.2s;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            min-height: 34px;
+        }
+
+        .collapse-btn:hover {
+            background: #1f5940;
+            transform: translateY(-1px);
+        }
+
+        /* 手机端额外优化 */
+        @media (max-width: 640px) {
+            body {
+                padding: 14px 12px;
+            }
+            .card {
+                padding: 1rem;
+            }
+            button {
+                padding: 0.5rem 1rem;
+                font-size: 0.8rem;
+                min-height: 40px;
+            }
+            .flex-btns {
+                gap: 6px;
+            }
+            .grid {
+                gap: 1rem;
+            }
+            .tab-btn {
+                padding: 0.4rem 0.7rem;
+                font-size: 0.8rem;
+            }
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            /* 强制所有输入框文字为深色、背景纯白 */
+            input, select, input[list] {
+                font-size: 16px;
+                background: white !important;
+                color: #111111 !important;
+                -webkit-text-fill-color: #111111 !important;
+            }
+        }
+
+        @media (min-width: 641px) and (max-width: 1024px) {
+            .grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .grid {
+                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            }
+        }
+
+        @media (max-width: 560px) {
+            table {
+                font-size: 0.65rem;
+            }
+            th, td {
+                padding: 6px 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>锂离子电池性能指标分析系统</h1>
+        <div class="sub">基于电化学模型 · 正负极材料工程计算平台 | 储能电池技术参考</div>
+    </div>
+
+    <!-- 1. 四大核心指标 -->
+    <div class="grid">
+        <div class="card">
+            <h2>Ⅰ 核心性能指标 · 理论定义</h2>
+            <div style="margin-bottom:0.8rem;"><strong>理论比容量</strong><br>单位质量电极材料理论上可释放的电量 (mAh/g)。公式：<span class="formula">C = n·F / (3.6·M)</span>，F=96500 C/mol，n为电子转移数，M摩尔质量。反映储锂极限。</div>
+            <div style="margin-bottom:0.8rem;"><strong>平均工作电压</strong><br>电池放电平台中值电压（V）。由正负极材料嵌锂电位差决定，直接影响输出能量。</div>
+            <div style="margin-bottom:0.8rem;"><strong>能量密度</strong><br>单位质量/体积存储的能量 (Wh/kg 或 Wh/L)。质量能量密度 = 电压 × 比容量 / 1000。决定续航能力。</div>
+            <div><strong>功率密度</strong><br>单位质量/体积可输出的功率 (W/kg)。决定快充、加速性能，动力电池核心指标。</div>
+        </div>
+        <div class="card">
+            <h2>Ⅱ 应用导向设计原则</h2>
+            <div><strong>🔋 动力电池 (EV/储能)</strong><br>高安全性、长循环寿命、适中能量密度 → 优选 LFP/石墨体系，兼顾功率密度，热管理策略优先。</div>
+            <div style="margin-top: 14px;"><strong>📱 消费电子电池 (3C)</strong><br>高体积能量密度、高电压平台 → 钴酸锂(LCO)/硅碳负极，追求紧凑与高续航。</div>
+            <div style="margin-top: 14px;"><strong>⚡ 快充/功率型电池</strong><br>高倍率、高功率密度 → 三元NCM811 + 人造石墨/中间相碳微球，低内阻设计，定向导电网络。</div>
+            <div style="margin-top: 14px; background:#f1f7f4; padding: 8px 12px; border-radius: 8px;"><span class="material-badge">工程设计准则</span> 高能量密度与高功率密度通常需要权衡，需根据具体工况选择正负极匹配、电极压实密度及电解液优化方案。</div>
+        </div>
+    </div>
+
+    <!-- 3. 电极材料参数库 · 选项卡模式 + 检索 + 折叠 -->
+    <div class="card" style="margin-bottom: 1.5rem;" id="materialLibraryCard">
+        <h2>Ⅲ 电极材料参数库 · 标准数据表
+            <button class="collapse-btn" id="toggleTableBtn">收起 ▲</button>
+        </h2>
+        <div id="materialTableContainer">
+            <div class="search-box">
+                <input type="text" id="materialSearchInput" placeholder="🔍 检索材料名称 (支持正/负极)" style="font-family: inherit;">
+            </div>
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="tab-cathode">📊 正极材料数据库</button>
+                <button class="tab-btn" data-tab="tab-anode">📈 负极材料数据库</button>
+            </div>
+            <div id="tab-cathode" class="tab-pane active-pane">
+                <div class="table-wrapper">
+                    <table id="cathode-table">
+                        <thead>
+                            <tr><th>材料名称</th><th>理论比容量(mAh/g)</th><th>实际比容量(mAh/g)</th><th>平均电压(V)</th><th>优点</th><th>缺点</th><th>适用场景</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="tab-anode" class="tab-pane">
+                <div class="table-wrapper">
+                    <table id="anode-table">
+                        <thead>
+                            <tr><th>材料名称</th><th>理论比容量(mAh/g)</th><th>实际比容量(mAh/g)</th><th>平均电压(V)</th><th>优点</th><th>缺点</th><th>适用场景</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="info-tip">※ 数据基于课程材料库及电化学手册，实际值依工艺而变。支持名称检索，表格可折叠。</div>
+    </div>
+
+    <!-- 四个计算模块（四五六七部分） -->
+    <div class="grid">
+        <div class="card">
+            <h2>Ⅳ 理论比容量计算</h2>
+            <div class="formula">C = n·F / (3.6·M)</div>
+            <div class="form-group">
+                <label>🔍 选择电极材料 (检索下拉)</label>
+                <input list="capacityMaterialList" id="capacityMaterialSelect" class="search-input" placeholder="键入检索材料名...">
+                <datalist id="capacityMaterialList"></datalist>
+            </div>
+            <div class="form-group"><label>电子转移数 n (e⁻)</label><input type="number" id="nValue" value="0" step="0.01"></div>
+            <div class="form-group"><label>摩尔质量 M (g/mol)</label><input type="number" id="molarMass" value="0" step="0.01"></div>
+            <div class="flex-btns"><button id="calcCapacityBtn">计算</button><button id="resetCapacityBtn" class="reset-btn small">重置</button></div>
+            <div class="result-box" id="capacityResult">理论比容量: —— mAh/g</div>
+            <div class="info-tip">选择材料自动填充n和M，支持检索。</div>
+        </div>
+        <div class="card">
+            <h2>Ⅴ 质量能量密度 (Wh/kg)</h2>
+            <div class="formula">E = U_avg × C_cell / 1000</div>
+            <div class="form-group">
+                <label>🔍 选择正极材料体系</label>
+                <input list="energyMaterialList" id="energyMaterialSelect" placeholder="检索正极材料...">
+                <datalist id="energyMaterialList"></datalist>
+            </div>
+            <div class="form-group"><label>平均工作电压 U (V)</label><input type="number" id="voltageE" value="0" step="0.01"></div>
+            <div class="form-group"><label>电池比容量 C_cell (mAh/g)</label><input type="number" id="specificCap" value="0" step="0.1"></div>
+            <div class="flex-btns"><button id="calcEnergyBtn">计算</button><button id="resetEnergyBtn" class="reset-btn small">重置</button></div>
+            <div class="result-box" id="energyResult">质量能量密度: —— Wh/kg</div>
+            <div class="info-tip">选择材料自动填充典型电压和实际比容量。</div>
+        </div>
+        <div class="card">
+            <h2>Ⅵ 功率密度 (W/kg)</h2>
+            <div class="formula">P_density = P_discharge / m_total</div>
+            <div class="form-group">
+                <label>🔍 典型功率场景 (可选)</label>
+                <input list="powerScenarioList" id="powerPreset" placeholder="检索场景/电池包">
+                <datalist id="powerScenarioList"></datalist>
+            </div>
+            <div class="form-group"><label>放电功率 P (W)</label><input type="number" id="powerW" value="0" step="10"></div>
+            <div class="form-group"><label>电池总质量 m (kg)</label><input type="number" id="massKg" value="0" step="0.1"></div>
+            <div class="flex-btns"><button id="calcPowerBtn">计算</button><button id="resetPowerBtn" class="reset-btn small">重置</button></div>
+            <div class="result-box" id="powerResult">质量功率密度: —— W/kg</div>
+            <div class="info-tip">可选常见电池包预设（如EV电池包）。</div>
+        </div>
+        <div class="card">
+            <h2>Ⅶ 体积能量/功率密度</h2>
+            <div class="form-group">
+                <label>🔍 检索典型电芯/模组</label>
+                <input list="volumetricPresetList" id="volumetricPreset" placeholder="检索电芯">
+                <datalist id="volumetricPresetList"></datalist>
+            </div>
+            <div class="form-group"><label>总能量 (Wh)</label><input type="number" id="totalEnergyWh" value="0" step="10"></div>
+            <div class="form-group"><label>总功率 (W)</label><input type="number" id="totalPowerVol" value="0" step="10"></div>
+            <div class="form-group"><label>体积 (L)</label><input type="number" id="volumeL" value="0" step="0.01"></div>
+            <div class="flex-btns"><button id="calcVolumetricBtn">计算</button><button id="resetVolumetricBtn" class="reset-btn small">重置</button></div>
+            <div class="result-box" id="volumetricResult">体积能量密度: —— Wh/L &nbsp;| 体积功率密度: —— W/L</div>
+        </div>
+    </div>
+
+    <!-- Ⅷ 电池体系综合性能对比与分析 -->
+    <div class="card">
+        <h2>Ⅷ 电池体系综合性能对比与分析</h2>
+        <div class="table-wrapper">
+            <table style="font-size:0.73rem;">
+                <thead>
+                    <tr><th>电池体系</th><th>正极材料</th><th>负极材料</th><th>能量密度(Wh/kg)</th><th>功率密度(W/kg)</th><th>循环寿命(次)</th><th>安全性评级</th><th>成本等级</th><th>适用场景</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>LFP体系</td><td>磷酸铁锂</td><td>人造石墨</td><td>130~160</td><td>300~500</td><td>3000~6000</td><td>★★★★★</td><td>低</td><td>乘用车、储能、商用车</td></tr>
+                    <tr><td>NCM523体系</td><td>LiNi0.5Co0.2Mn0.3O2</td><td>人造石墨</td><td>160~200</td><td>400~700</td><td>1500~2500</td><td>★★★</td><td>较低</td><td>中低端EV、两轮车</td></tr>
+                    <tr><td>NCM622体系</td><td>LiNi0.6Co0.2Mn0.2O2</td><td>人造石墨</td><td>200~240</td><td>500~800</td><td>1200~2000</td><td>★★★</td><td>中等</td><td>中高端EV</td></tr>
+                    <tr><td>NCM811体系</td><td>LiNi0.8Co0.1Mn0.1O2</td><td>人造石墨/硅碳</td><td>240~280</td><td>600~1000</td><td>800~1500</td><td>★★</td><td>较高</td><td>长续航EV</td></tr>
+                    <tr><td>LCO体系</td><td>钴酸锂</td><td>天然石墨</td><td>180~240</td><td>300~600</td><td>500~1000</td><td>★★</td><td>高</td><td>智能手机、笔记本</td></tr>
+                    <tr><td>钛酸锂体系</td><td>LMO/NCM</td><td>钛酸锂</td><td>80~110</td><td>1000~3000</td><td>10000~20000</td><td>★★★★★</td><td>中等</td><td>快充公交、储能调频</td></tr>
+                    <tr><td>高镍+硅碳</td><td>NCM811/NCA</td><td>硅碳负极</td><td>280~350</td><td>500~900</td><td>500~1000</td><td>★★</td><td>高</td><td>下一代高比能电池</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="info-tip" style="margin-top: 12px;">
+            📊 <strong>分析总结</strong>：LFP体系安全性及循环寿命最优（★★★★★），适用于对能量密度要求不高的场景；NCM811/高镍+硅碳体系能量密度领先但安全性与循环需谨慎设计；钛酸锂体系功率密度及循环极佳，适用于快充及高安全场景；LCO体系仍主导消费电子市场。工程选型需根据具体应用权衡能量、功率、寿命与成本。
+        </div>
+    </div>
+
+    <!-- Ⅸ 理论容量与实际容量的差异分析 -->
+    <div class="card">
+        <h2>Ⅸ 理论容量与实际容量的差异分析</h2>
+        <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+            <div style="flex:1; min-width: 160px;"><span class="material-badge">衰减因素</span><br>▪ SEI膜消耗锂<br>▪ 电极极化<br>▪ 晶格缺陷<br>▪ 电解液副反应</div>
+            <div style="flex:1; min-width: 160px;"><span class="material-badge">优化策略</span><br>▪ 纳米包覆<br>▪ 预锂化<br>▪ 导电网络优化<br>▪ 高压实密度</div>
+            <div style="flex:1; min-width: 160px;"><span class="material-badge">选材参考</span><br>高能量→高镍+硅碳；高安全→LFP+石墨；高倍率→NCM622+软碳</div>
+        </div>
+    </div>
+    <footer>© 储能电池技术 · 基于法拉第定律与电化学模型 | 本平台仅用于教学与工程参数评估</footer>
+</div>
+
+<script>
+    // ---------- 数据库（完整保留）----------
+    const cathodeMaterials = [
+        { name:"LFP（磷酸铁锂）", theory:170, actual:150, voltage:3.43, n:1, M:157.76, note:"橄榄石结构稳定性极高", drawback:"能量密度偏低", scene:"动力电池/储能" },
+        { name:"LMFP（磷酸锰铁锂）", theory:170, actual:138, voltage:3.95, n:1, M:157.76, note:"电压平台提升", drawback:"电子电导率低", scene:"两轮车/动力电池" },
+        { name:"LMO（锰酸锂）尖晶石型", theory:148, actual:115, voltage:3.9, n:1, M:138.8, note:"倍率优异", drawback:"高温性能差", scene:"电动工具/储能" },
+        { name:"LNMO（镍锰酸锂）高压尖晶石", theory:146.7, actual:140, voltage:4.7, n:1, M:182.5, note:"高电压平台", drawback:"电解液腐蚀", scene:"高电压应用" },
+        { name:"LCO（钴酸锂）层状型", theory:273, actual:155, voltage:3.8, n:1, M:97.87, note:"压实密度极高", drawback:"钴昂贵", scene:"消费电子" },
+        { name:"NCM111（三元111）", theory:280, actual:140, voltage:3.75, n:1, M:96.5, note:"综合平衡", drawback:"倍率一般", scene:"早期动力电池" },
+        { name:"NCM523（三元523）", theory:280, actual:170, voltage:3.65, n:1, M:96.5, note:"性价比高", drawback:"表面碱性高", scene:"中端动力" },
+        { name:"NCM622（三元622）", theory:280, actual:182, voltage:3.7, n:1, M:96.3, note:"中高端动力", drawback:"高电压循环下降", scene:"新能源汽车" },
+        { name:"NCM811（三元811）", theory:280, actual:210, voltage:3.7, n:1, M:96.0, note:"高能量密度", drawback:"热稳定性差", scene:"长续航EV" },
+        { name:"NCA（镍钴铝酸锂）", theory:280, actual:215, voltage:3.7, n:1, M:96.2, note:"比容量高", drawback:"湿度敏感", scene:"高端动力" },
+        { name:"富锂锰基层状氧化物(LLO)", theory:280, actual:250, voltage:3.6, n:1, M:96, note:"超高容量前沿", drawback:"电压衰减", scene:"下一代高比能" },
+        { name:"无钴层状NM90", theory:200, actual:200, voltage:3.7, n:1, M:94.5, note:"低成本高容量", drawback:"动力学差", scene:"研发中试" }
+    ];
+    const anodeMaterials = [
+        { name:"天然石墨", theory:372, actual:330, voltage:0.1, n:1/6, M:72.06, note:"资源丰富", drawback:"倍率有限", scene:"消费电子/储能" },
+        { name:"人造石墨", theory:372, actual:300, voltage:0.1, n:1/6, M:72.06, note:"循环优异", drawback:"成本略高", scene:"动力电池" },
+        { name:"中间相碳微球(MCMB)", theory:372, actual:315, voltage:0.1, n:1/6, M:72.06, note:"倍率良好", drawback:"成本较高", scene:"倍率型动力" },
+        { name:"硅碳负极(Si@C)", theory:4200, actual:550, voltage:0.4, n:4.4, M:28.09, note:"高容量", drawback:"体积膨胀大", scene:"下一代高能量" },
+        { name:"硅氧负极(SiOx/C)", theory:2615, actual:1500, voltage:0.5, n:2.5, M:33.2, note:"体积膨胀较小", drawback:"首效低", scene:"高能量密度" },
+        { name:"纳米硅负极", theory:3800, actual:800, voltage:0.4, n:4.4, M:28.09, note:"研发前沿", drawback:"循环极差", scene:"研发/复合" },
+        { name:"金属锂(Li)负极", theory:3860, actual:0, voltage:0, n:1, M:6.94, note:"超高容量(研发)", drawback:"枝晶生长", scene:"固态电池前沿" },
+        { name:"Bi基负极", theory:385, actual:347, voltage:0.6, n:3, M:208.98, note:"体积比容量高", drawback:"体积膨胀", scene:"前沿研发" },
+        { name:"Sn基负极", theory:993, actual:676, voltage:0.5, n:4.4, M:118.71, note:"高容量锡基", drawback:"循环寿命短", scene:"高容量负极研究" },
+        { name:"LTO（钛酸锂）", theory:175, actual:165, voltage:1.55, n:3, M:140.7, note:"零应变超长寿命", drawback:"能量密度低", scene:"快充储能/公交" }
+    ];
+
+    function renderFilteredTables() {
+        const keyword = document.getElementById('materialSearchInput').value.trim().toLowerCase();
+        const filterRows = (rows) => rows.filter(r => r.name.toLowerCase().includes(keyword));
+        const filteredCathode = filterRows(cathodeMaterials);
+        const filteredAnode = filterRows(anodeMaterials);
+        const cathodeTbody = document.querySelector('#cathode-table tbody');
+        const anodeTbody = document.querySelector('#anode-table tbody');
+        if(cathodeTbody) cathodeTbody.innerHTML = filteredCathode.map(m => `<tr><td>${m.name}</td><td>${m.theory}</td><td>${m.actual||'—'}</td><td>${m.voltage}</td><td>${m.note}</td><td>${m.drawback||'—'}</td><td>${m.scene||'—'}</td></tr>`).join('');
+        if(anodeTbody) anodeTbody.innerHTML = filteredAnode.map(m => `<tr><td>${m.name}</td><td>${m.theory}</td><td>${m.actual||'—'}</td><td>${m.voltage}</td><td>${m.note}</td><td>${m.drawback||'—'}</td><td>${m.scene||'—'}</td></tr>`).join('');
+    }
+    renderFilteredTables();
+    document.getElementById('materialSearchInput').addEventListener('input', renderFilteredTables);
+    const tableContainer = document.getElementById('materialTableContainer');
+    const toggleBtn = document.getElementById('toggleTableBtn');
+    let isExpanded = true;
+    toggleBtn.addEventListener('click', () => {
+        if(isExpanded) { tableContainer.style.display = 'none'; toggleBtn.textContent = '展开 ▼'; } 
+        else { tableContainer.style.display = 'block'; toggleBtn.textContent = '收起 ▲'; }
+        isExpanded = !isExpanded;
+    });
+
+    // 下拉菜单数据
+    const allCapacityMaterials = [...cathodeMaterials, ...anodeMaterials];
+    const capacityDataList = document.getElementById('capacityMaterialList');
+    allCapacityMaterials.forEach(m => { let opt = document.createElement('option'); opt.value = m.name; capacityDataList.appendChild(opt); });
+    const energyDataList = document.getElementById('energyMaterialList');
+    cathodeMaterials.forEach(m => { let opt = document.createElement('option'); opt.value = m.name; energyDataList.appendChild(opt); });
+    const powerScenarios = [
+        { name:"EV电池包 (60kWh, 400kg)", power:120000, mass:400 },
+        { name:"HEV功率型电池 (10kW, 30kg)", power:10000, mass:30 },
+        { name:"消费电子电芯 (5W, 0.045kg)", power:5, mass:0.045 },
+        { name:"储能模组 (50kW, 500kg)", power:50000, mass:500 }
+    ];
+    const powerDataList = document.getElementById('powerScenarioList');
+    powerScenarios.forEach(s => { let opt = document.createElement('option'); opt.value = s.name; powerDataList.appendChild(opt); });
+    const volumetricPresets = [
+        { name:"21700电芯 (18Wh, 0.024L)", energy:18, power:30, volume:0.024 },
+        { name:"方形铝壳50Ah (180Wh, 0.45L)", energy:180, power:400, volume:0.45 },
+        { name:"软包电池 (30Wh, 0.12L)", energy:30, power:60, volume:0.12 },
+        { name:"LFP模组 (2kWh, 1.8L)", energy:2000, power:2000, volume:1.8 }
+    ];
+    const volDataList = document.getElementById('volumetricPresetList');
+    volumetricPresets.forEach(v => { let opt = document.createElement('option'); opt.value = v.name; volDataList.appendChild(opt); });
+
+    // 计算函数（完整保留，逻辑不变）
+    const nInput = document.getElementById('nValue'), mMassInput = document.getElementById('molarMass'), capacityResultDiv = document.getElementById('capacityResult');
+    const capacitySelect = document.getElementById('capacityMaterialSelect');
+    function findMaterialByName(name) { return allCapacityMaterials.find(m => m.name === name); }
+    capacitySelect.addEventListener('change', (e) => { const mat = findMaterialByName(e.target.value); if(mat) { nInput.value = mat.n; mMassInput.value = mat.M; computeTheoreticalCapacity(); } });
+    function computeTheoreticalCapacity() { try { let n = parseFloat(nInput.value), M = parseFloat(mMassInput.value); if(isNaN(n)||isNaN(M)) throw new Error("有效数字"); if(n<0) throw new Error("n不能为负"); if(M<=0) throw new Error("M>0"); let cap = (n * 96500) / (3.6 * M); if(cap<0) throw new Error("负值"); capacityResultDiv.innerText = `理论比容量: ${cap.toFixed(2)} mAh/g  (n=${n}, M=${M} g/mol)`; } catch(err) { capacityResultDiv.innerHTML = `<span class="error-msg">❌ ${err.message}</span>`; } }
+    document.getElementById('calcCapacityBtn').addEventListener('click', computeTheoreticalCapacity);
+    document.getElementById('resetCapacityBtn').addEventListener('click', () => { nInput.value = 0; mMassInput.value = 0; capacitySelect.value = ''; capacityResultDiv.innerText = "理论比容量: —— mAh/g"; });
+    const voltageEInput = document.getElementById('voltageE'), specificCapInput = document.getElementById('specificCap'), energyResultDiv = document.getElementById('energyResult'), energySelect = document.getElementById('energyMaterialSelect');
+    energySelect.addEventListener('change', (e) => { const mat = cathodeMaterials.find(m => m.name === e.target.value); if(mat) { voltageEInput.value = mat.voltage; specificCapInput.value = mat.actual || (mat.theory * 0.7).toFixed(0); computeEnergyDensity(); } });
+    function computeEnergyDensity() { try { let U = parseFloat(voltageEInput.value), C = parseFloat(specificCapInput.value); if(isNaN(U)||isNaN(C)) throw new Error("有效数字"); if(U<0||C<0) throw new Error("不能为负"); if(U===0||C===0) throw new Error("须>0"); let ed = (U * C) / 1000; if(ed<0) throw new Error("负值"); energyResultDiv.innerText = `质量能量密度: ${ed.toFixed(2)} Wh/kg  (U=${U} V, C=${C} mAh/g)`; } catch(err) { energyResultDiv.innerHTML = `<span class="error-msg">❌ ${err.message}</span>`; } }
+    document.getElementById('calcEnergyBtn').addEventListener('click', computeEnergyDensity);
+    document.getElementById('resetEnergyBtn').addEventListener('click', () => { voltageEInput.value = 0; specificCapInput.value = 0; energySelect.value = ''; energyResultDiv.innerText = "质量能量密度: —— Wh/kg"; });
+    const powerWInput = document.getElementById('powerW'), massKgInput = document.getElementById('massKg'), powerResultDiv = document.getElementById('powerResult'), powerPreset = document.getElementById('powerPreset');
+    powerPreset.addEventListener('change', (e) => { const scenario = powerScenarios.find(s => s.name === e.target.value); if(scenario) { powerWInput.value = scenario.power; massKgInput.value = scenario.mass; computePowerDensity(); } });
+    function computePowerDensity() { try { let P = parseFloat(powerWInput.value), m = parseFloat(massKgInput.value); if(isNaN(P)||isNaN(m)) throw new Error("有效数字"); if(P<0) throw new Error("功率不能为负"); if(m<=0) throw new Error("质量>0"); let pd = P / m; if(pd<0) throw new Error("负值"); powerResultDiv.innerText = `质量功率密度: ${pd.toFixed(2)} W/kg  (P=${P} W, m=${m} kg)`; } catch(err) { powerResultDiv.innerHTML = `<span class="error-msg">❌ ${err.message}</span>`; } }
+    document.getElementById('calcPowerBtn').addEventListener('click', computePowerDensity);
+    document.getElementById('resetPowerBtn').addEventListener('click', () => { powerWInput.value = 0; massKgInput.value = 0; powerPreset.value = ''; powerResultDiv.innerText = "质量功率密度: —— W/kg"; });
+    const totalEnergyInput = document.getElementById('totalEnergyWh'), totalPowerVolInput = document.getElementById('totalPowerVol'), volumeInput = document.getElementById('volumeL'), volumetricResultDiv = document.getElementById('volumetricResult'), volumetricPresetSel = document.getElementById('volumetricPreset');
+    volumetricPresetSel.addEventListener('change', (e) => { const preset = volumetricPresets.find(v => v.name === e.target.value); if(preset) { totalEnergyInput.value = preset.energy; totalPowerVolInput.value = preset.power; volumeInput.value = preset.volume; computeVolumetric(); } });
+    function computeVolumetric() { try { let E = parseFloat(totalEnergyInput.value), Pv = parseFloat(totalPowerVolInput.value), V = parseFloat(volumeInput.value); if(isNaN(V)||V<=0) throw new Error("体积须>0"); if((isNaN(E)||E<0)&&(isNaN(Pv)||Pv<0)) throw new Error("至少输入能量或功率"); if(E<0||Pv<0) throw new Error("不能为负"); let volEd = (isNaN(E)?0:E/V), volPd = (isNaN(Pv)?0:Pv/V); if(volEd<0||volPd<0) throw new Error("负值"); let msg = `体积能量密度: ${volEd.toFixed(2)} Wh/L | 体积功率密度: ${volPd.toFixed(2)} W/L`; if(isNaN(E)||E===0) msg = `体积功率密度: ${volPd.toFixed(2)} W/L (未输入能量)`; if(isNaN(Pv)||Pv===0) msg = `体积能量密度: ${volEd.toFixed(2)} Wh/L (未输入功率)`; volumetricResultDiv.innerText = msg; } catch(err) { volumetricResultDiv.innerHTML = `<span class="error-msg">❌ ${err.message}</span>`; } }
+    document.getElementById('calcVolumetricBtn').addEventListener('click', computeVolumetric);
+    document.getElementById('resetVolumetricBtn').addEventListener('click', () => { totalEnergyInput.value = 0; totalPowerVolInput.value = 0; volumeInput.value = 0; volumetricPresetSel.value = ''; volumetricResultDiv.innerText = "体积能量密度: —— Wh/L | 体积功率密度: —— W/L"; });
+    // 选项卡切换
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const panes = document.querySelectorAll('.tab-pane');
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabId = btn.getAttribute('data-tab');
+            panes.forEach(p => p.classList.remove('active-pane'));
+            document.getElementById(tabId).classList.add('active-pane');
+            tabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+</script>
+</body>
+</html>

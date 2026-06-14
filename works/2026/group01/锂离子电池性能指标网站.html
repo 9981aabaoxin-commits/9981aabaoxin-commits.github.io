@@ -1,0 +1,2101 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>锂离子电池性能指标网站</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            chtml: { matchFontHeight: false }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        
+        :root {
+            --bg-body: #dce3ea;
+            --bg-surface: #e4eaf0;
+            --bg-card: rgba(235, 240, 245, 0.55);
+            --text-primary: #1e2633;
+            --text-secondary: #4a5568;
+            --text-muted: #7b8a9e;
+            --accent: #5b9fd4;
+            --accent-glow: #7db8e8;
+            --accent-neon: #4da0e8;
+            --glass-border: rgba(255, 255, 255, 0.45);
+            --glass-blur: 16px;
+            --radius-xl: 24px;
+            --radius-lg: 20px;
+            --radius-md: 16px;
+            --radius-sm: 12px;
+            
+            --shadow-neumorph: -5px -5px 14px rgba(255, 255, 255, 0.75), 6px 6px 16px rgba(166, 175, 190, 0.35);
+            --shadow-neumorph-sm: -3px -3px 9px rgba(255, 255, 255, 0.7), 4px 4px 10px rgba(166, 175, 190, 0.3);
+            --shadow-neumorph-inset: inset -3px -3px 8px rgba(255, 255, 255, 0.65), inset 3px 3px 10px rgba(166, 175, 190, 0.28);
+            --shadow-glow: 0 0 22px rgba(77, 160, 232, 0.35), 0 0 50px rgba(77, 160, 232, 0.15);
+            
+            --transition-smooth: 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+            
+            --font-xs: 0.75rem;
+            --font-sm: 0.85rem;
+            --font-md: 1rem;
+            --font-lg: 1.15rem;
+            --font-xl: 1.35rem;
+            --font-2xl: 1.7rem;
+            --font-3xl: clamp(2rem, 4vw, 2.8rem);
+
+            /* 仓鼠专属调色盘 (3D Popmart 可爱配色) */
+            --ham-main: #ffba7a;
+            --ham-light: #ffd9b3;
+            --ham-shadow: #da7e31;
+            --ham-ear: #ff9e9a;
+            --ham-line: #423024;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-primary);
+            min-height: 100vh;
+            min-height: 100dvh;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            font-weight: 400;
+            cursor: default;
+            font-size: var(--font-sm);
+        }
+
+        /* ===== 星空粒子层 ===== */
+        #starfieldCanvas {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+        }
+
+        /* ===== 流星层 ===== */
+        .meteors-layer, .ripple-container { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
+        .meteors-layer { z-index: 1; }
+        .ripple-container { z-index: 3; }
+
+        /* ===== 流星：银白流星（经典 Shooting Star） ===== */
+        .meteor {
+            position: absolute;
+            border-radius: 50%;
+            animation: meteorFall linear infinite;
+            opacity: 0;
+            pointer-events: none;
+        }
+        @keyframes meteorFall {
+            0%   { transform: translate(0, -40px) rotate(-40deg) scale(0.2); opacity: 0; }
+            5%   { opacity: 1; transform: translate(0, 0) rotate(-40deg) scale(1); }
+            25%  { opacity: 1; transform: translate(0, 0) rotate(-40deg) scale(1); }
+            55%  { opacity: 0.7; transform: translate(200px, 120px) rotate(-40deg) scale(0.85); }
+            80%  { opacity: 0.2; transform: translate(400px, 240px) rotate(-40deg) scale(0.5); }
+            100% { transform: translate(550px, 330px) rotate(-40deg) scale(0); opacity: 0; }
+        }
+        .ripple-dot {
+            position: absolute; border-radius: 50%; border: 1.5px solid rgba(77, 160, 232, 0.5);
+            background: rgba(77, 160, 232, 0.12); animation: rippleExpand 1.6s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+        }
+        @keyframes rippleExpand {
+            0% { width: 6px; height: 6px; opacity: 0.7; transform: translate(-50%, -50%) scale(0); }
+            55% { opacity: 0.25; }
+            100% { width: 150px; height: 150px; opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+        .click-burst {
+            position: absolute; border-radius: 50%; background: rgba(77, 160, 232, 0.22);
+            animation: burstExpand 0.75s forwards;
+        }
+        @keyframes burstExpand {
+            0% { width: 0; height: 0; opacity: 0.8; transform: translate(-50%, -50%) scale(0); }
+            100% { width: 180px; height: 180px; opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        #home-view, #dashboard-view { transition: opacity 0.45s ease; }
+        .hidden { display: none !important; opacity: 0; }
+
+        /* ============ 灵动岛 (带位置下移) ============ */
+        .dynamic-island {
+            position: fixed; 
+            top: 38px; /* <--- 专门向下调优的位置，为上面的仓鼠留足空间 */
+            left: 50%; transform: translateX(-50%); z-index: 100;
+            background: rgba(220, 228, 238, 0.7); backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 28px;
+            height: 48px; min-width: 130px; max-width: 400px;
+            padding: 0 16px; display: flex; align-items: center; justify-content: center;
+            gap: 10px; cursor: pointer; transition: all 0.45s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: var(--shadow-neumorph-sm); user-select: none;
+            overflow: visible;
+        }
+        .dynamic-island:hover {
+            min-width: 330px; border-radius: 24px; height: 58px;
+            border-color: rgba(77, 160, 232, 0.35); box-shadow: var(--shadow-neumorph-sm), var(--shadow-glow);
+        }
+        .di-icon {
+            width: 24px; height: 24px; border-radius: 50%; background: var(--accent);
+            display: flex; align-items: center; justify-content: center; font-weight: 700;
+            font-size: 0.65rem; color: #fff; transition: all 0.45s ease;
+        }
+        .dynamic-island:hover .di-icon { width: 30px; height: 30px; box-shadow: 0 0 18px rgba(77,160,232,0.55); }
+        .di-text {
+            font-size: 0.75rem; font-weight: 500; color: var(--text-secondary);
+            white-space: nowrap; overflow: hidden; transition: all 0.45s ease;
+            max-width: 0; opacity: 0;
+        }
+        .dynamic-island:hover .di-text { max-width: 180px; opacity: 1; }
+        .di-divider {
+            width: 1px; height: 14px; background: rgba(0, 0, 0, 0.1); opacity: 0; transition: opacity 0.45s ease;
+        }
+        .dynamic-island:hover .di-divider { opacity: 1; }
+        .di-status {
+            width: 6px; height: 6px; border-radius: 50%; background: #4ade80;
+            box-shadow: 0 0 8px rgba(74, 222, 128, 0.5); animation: statusPulse 2.5s infinite;
+        }
+        @keyframes statusPulse { 0%, 100% { box-shadow: 0 0 5px rgba(74,222,128,0.3); } 50% { box-shadow: 0 0 15px rgba(74,222,128,0.7); } }
+        
+        .hamster-spacer { width: 0; transition: width 0.45s ease; }
+        .dynamic-island:hover .hamster-spacer { width: 55px; }
+
+        /* ============ 3D 小仓鼠 ============ */
+        .hamster-container {
+            position: absolute;
+            bottom: 100%; right: 20px;
+            width: 60px; height: 52px;
+            margin-bottom: -15px; 
+            cursor: pointer; z-index: 10;
+            opacity: 0; transform: translateY(10px) scale(0.8);
+            transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+        }
+        .dynamic-island:hover .hamster-container { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+
+        .h3d-body {
+            position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%);
+            width: 58px; height: 50px;
+            background: radial-gradient(circle at 35% 25%, var(--ham-light) 0%, var(--ham-main) 50%, var(--ham-shadow) 100%);
+            border-radius: 45% 45% 40% 40%; box-shadow: inset -4px -4px 8px rgba(180, 80, 0, 0.25), 0 5px 8px rgba(0, 0, 0, 0.15); z-index: 2;
+        }
+        .h3d-belly {
+            position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 44px; height: 26px; background: radial-gradient(circle at 40% 20%, #fff 0%, #ffe4cc 80%);
+            border-radius: 50% 50% 40% 40%; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .h3d-ear {
+            position: absolute; top: -3px; width: 18px; height: 18px;
+            background: radial-gradient(circle at 30% 30%, var(--ham-light), var(--ham-main)); border-radius: 50%;
+            box-shadow: inset -2px -2px 3px rgba(180,80,0,0.2), 0 2px 3px rgba(0,0,0,0.1); z-index: 1;
+        }
+        .h3d-ear-l { left: 1px; } .h3d-ear-r { right: 1px; }
+        .h3d-ear-inner {
+            position: absolute; top: 4px; left: 4px; width: 8px; height: 8px; background: radial-gradient(circle at 30% 30%, #ffc2b3, var(--ham-ear));
+            border-radius: 50%; box-shadow: inset 1px 1px 3px rgba(0,0,0,0.1);
+        }
+        .h3d-glasses {
+            position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 3px; z-index: 3;
+        }
+        .h3d-glass {
+            width: 22px; height: 22px; border: 2.2px solid var(--ham-line); border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15); box-shadow: 0 2px 4px rgba(0,0,0,0.15), inset 0 1px 2px rgba(255,255,255,0.7);
+            position: relative; box-sizing: border-box;
+        }
+        .h3d-bridge { width: 5px; height: 2.2px; background: var(--ham-line); margin-top: -3px; }
+        .h3d-eye {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 8px; height: 11px; background: var(--ham-line); border-radius: 50%; animation: blinkAuto 4s infinite;
+        }
+        .h3d-shine { position: absolute; top: 1.5px; right: 2px; width: 3.5px; height: 3.5px; background: #fff; border-radius: 50%; box-shadow: 0 0 2px #fff; }
+        .h3d-nose { position: absolute; top: 25px; left: 50%; transform: translateX(-50%); width: 5px; height: 3px; background: #e06c6c; border-radius: 3px; z-index: 4; }
+        .h3d-mouth { position: absolute; top: 29px; left: 50%; transform: translateX(-50%); width: 8px; height: 5px; border-bottom: 2px solid var(--ham-line); border-radius: 0 0 4px 4px; z-index: 4; }
+        .h3d-cheek { position: absolute; top: 24px; width: 10px; height: 6px; background: rgba(255, 110, 110, 0.5); border-radius: 50%; filter: blur(1.5px); z-index: 3; }
+        .h3d-cheek-l { left: 4px; } .h3d-cheek-r { right: 4px; }
+        .h3d-paw {
+            position: absolute; bottom: -5px; width: 16px; height: 20px;
+            background: radial-gradient(circle at 30% 30%, var(--ham-light), var(--ham-main)); border-radius: 8px; z-index: 10;
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.25), inset -2px -2px 3px rgba(180, 80, 0, 0.25);
+        }
+        .h3d-paw-l { left: 6px; } .h3d-paw-r { right: 6px; transform-origin: top center; }
+        .h3d-pen {
+            position: absolute; top: -10px; left: 2px; width: 4.5px; height: 18px; background: linear-gradient(90deg, #6ba4d2, #3979ab); border-radius: 2px; transform: rotate(-15deg); z-index: -1; box-shadow: 1px 1px 3px rgba(0,0,0,0.25);
+        }
+        .h3d-pen::after { content: ''; position: absolute; bottom: -3px; left: 0.75px; width: 3px; height: 4px; background: #333; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+
+               /* 原仓鼠说话气泡位置，改为右侧显示 */
+        .hamster-speech {
+            position: absolute; top: -10px; left: calc(100% + 12px); transform: scale(0); transform-origin: left center;
+            background: rgba(255, 255, 255, 0.98); color: var(--text-primary); font-size: 0.76rem; font-weight: 600; padding: 9px 15px; border-radius: 12px; white-space: normal; width: max-content; max-width: 220px; text-align: left; line-height: 1.45;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15), 0 2px 5px rgba(0, 0, 0, 0.08); letter-spacing: 0.03em; z-index: 20; opacity: 0; transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); pointer-events: none;
+        }
+        .hamster-speech.show { transform: scale(1); opacity: 1; }
+        .hamster-speech::after { content: ''; position: absolute; top: 18px; left: -5px; width: 12px; height: 12px; background: rgba(255, 255, 255, 0.98); border-radius: 2px; transform: rotate(45deg); box-shadow: -2px 2px 3px rgba(0, 0, 0, 0.03); }
+
+        /* 追加：理论推导小按钮特效 */
+        .deriv-badge {
+            display: inline-block; margin-left: 8px; padding: 2px 8px; background: rgba(77, 160, 232, 0.12); color: var(--accent); border: 1px solid rgba(77, 160, 232, 0.3); border-radius: 6px; font-size: 0.65rem; font-weight: 600; cursor: pointer; transition: all 0.25s; vertical-align: middle;
+        }
+        .deriv-badge:hover { background: var(--accent); color: #fff; transform: translateY(-1px); box-shadow: 0 3px 8px rgba(77, 160, 232, 0.35); }
+
+        @keyframes pawWave { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-35deg) translateY(-2px); } 75% { transform: rotate(20deg) translateY(-1px); } }
+        .waving { animation: pawWave 0.6s ease-in-out; }
+        @keyframes blinkAuto { 0%, 90%, 100% { transform: translate(-50%, -50%) scaleY(1); } 95% { transform: translate(-50%, -50%) scaleY(0.04); } }
+        @keyframes bodyDance { 0%, 100% { transform: translateX(-50%) rotate(0deg) translateY(0); } 25% { transform: translateX(-50%) rotate(-5deg) translateY(-2px); } 75% { transform: translateX(-50%) rotate(5deg) translateY(-2px); } }
+        .dancing { animation: bodyDance 0.7s ease-in-out; }
+
+        /* ============ 首页区块 ============ */
+        #home-view { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 80px 20px 36px; z-index: 3; }
+        .hero-top { text-align: center; margin-bottom: 20px; z-index: 5; }
+        .hero-badge { display: inline-block; padding: 6px 18px; border-radius: 18px; background: rgba(91, 159, 212, 0.08); border: 1px solid rgba(91, 159, 212, 0.2); font-size: var(--font-xs); font-weight: 500; color: var(--accent); margin-bottom: 14px; }
+        .hero-title { font-size: var(--font-3xl); font-weight: 700; margin: 0 0 10px 0; color: var(--text-primary); }
+        .hero-subtitle { font-size: var(--font-md); color: var(--text-secondary); }
+        .hero-subtitle span { color: var(--accent); font-weight: 600; }
+        
+        .orbital-wrapper { display: flex; align-items: center; justify-content: center; gap: 26px; width: 100%; max-width: 860px; z-index: 5; margin: 0 auto; }
+        .orbital-col { display: flex; flex-direction: column; gap: 14px; flex: 1; max-width: 210px; }
+        .orbital-col--left { align-items: flex-end; }
+        .orbital-col--right { align-items: flex-start; }
+        .orbital-center { flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+        .central-logo { width: clamp(90px, 14vw, 125px); height: clamp(90px, 14vw, 125px); border-radius: 50%; background: rgba(220, 228, 238, 0.55); backdrop-filter: blur(var(--glass-blur)); border: 2px solid var(--glass-border); box-shadow: var(--shadow-neumorph); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: clamp(1.8rem, 3vw, 2.6rem); color: var(--accent); cursor: pointer; transition: all var(--transition-smooth); user-select: none; }
+        .central-logo:hover { box-shadow: var(--shadow-neumorph), var(--shadow-glow); border-color: rgba(77, 160, 232, 0.45); transform: scale(1.06); }
+        
+        .module-card { background: rgba(228, 234, 242, 0.55); backdrop-filter: blur(var(--glass-blur)); border: 1px solid var(--glass-border); border-radius: var(--radius-xl); padding: 16px 14px; cursor: pointer; transition: all var(--transition-smooth); box-shadow: var(--shadow-neumorph-sm); display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: inherit; width: 100%; max-width: 190px; }
+        .module-card:hover { border-color: rgba(77, 160, 232, 0.4); box-shadow: var(--shadow-neumorph-sm), var(--shadow-glow); }
+        .orbital-col--left .module-card:hover { transform: translateX(-14px); }
+        .orbital-col--right .module-card:hover { transform: translateX(14px); }
+        .card-icon { width: 38px; height: 38px; border-radius: 10px; background: rgba(91, 159, 212, 0.07); display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
+        .module-card:hover .card-icon { background: rgba(91, 159, 212, 0.16); box-shadow: 0 0 18px rgba(77, 160, 232, 0.2); }
+        .card-icon svg { width: 18px; height: 18px; stroke: var(--accent); fill: none; stroke-width: 1.5; }
+        .card-num { font-size: 0.68rem; font-weight: 600; color: var(--accent); }
+        .card-title { font-size: var(--font-sm); font-weight: 600; color: var(--text-primary); margin: 3px 0; }
+        .card-hint { font-size: var(--font-xs); color: var(--text-muted); }
+        
+        .home-footer { text-align: center; margin-top: 24px; color: var(--text-muted); font-size: 0.72rem; z-index: 5; }
+        .home-footer strong { color: var(--text-secondary); font-weight: 600; }
+
+        /* ============ 详情页 ============ */
+        #dashboard-view { display: flex; height: 100vh; overflow: hidden; position: relative; z-index: 10; }
+        .sidebar { width: 240px; background: rgba(220, 228, 238, 0.6); backdrop-filter: blur(18px); border-right: 1px solid rgba(255, 255, 255, 0.4); display: flex; flex-direction: column; z-index: 20; box-shadow: var(--shadow-neumorph-sm); }
+        .brand-header { padding: 19px 15px; border-bottom: 1px solid rgba(0, 0, 0, 0.06); display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: var(--font-sm); cursor: pointer; color: var(--text-primary); }
+        .brand-logo { width: 28px; height: 28px; background: var(--accent); color: #fff; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; }
+        .main-nav { list-style: none; padding: 12px 10px; overflow-y: auto; }
+        .main-nav a { display: flex; padding: 10px 14px; margin-bottom: 5px; color: var(--text-secondary); text-decoration: none; border-radius: 10px; font-size: var(--font-sm); transition: 0.25s; }
+        .main-nav a:hover { background: rgba(255, 255, 255, 0.5); color: var(--text-primary); }
+        .main-nav a.active { background: rgba(255, 255, 255, 0.65); color: var(--accent); font-weight: 600; border-left: 3px solid var(--accent-neon); box-shadow: var(--shadow-neumorph-sm); }
+        
+        .content-area { flex: 1; padding: 26px 30px; overflow-y: auto; }
+        .page-sec { max-width: 1200px; margin: 0 auto; }
+        
+        .glass-card { background: rgba(228, 234, 242, 0.5); backdrop-filter: blur(14px); border: 1px solid var(--glass-border); border-radius: var(--radius-xl); padding: 26px 28px; margin-bottom: 16px; box-shadow: var(--shadow-neumorph-sm); }
+        .section-title { font-size: var(--font-xl); color: var(--text-primary); margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+        .section-title::before { content: ''; width: 4px; height: 18px; background: var(--accent-neon); border-radius: 3px; }
+        .sub-title { font-size: var(--font-md); font-weight: 600; color: var(--accent); margin: 16px 0 12px; }
+        
+        /* 响应式左右表单布局 */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1.05fr; gap: 24px; align-items: start; }
+        .left-col { display: flex; flex-direction: column; gap: 14px; }
+        .right-col { display: flex; flex-direction: column; }
+        
+        .def-box { background: rgba(220, 228, 238, 0.4); border: 1px solid rgba(255, 255, 255, 0.4); border-radius: var(--radius-md); padding: 15px 18px; border-left: 4px solid var(--accent-neon); margin-bottom: 12px; box-shadow: var(--shadow-neumorph-inset); }
+        .def-box h4 { margin: 0 0 6px 0; font-size: var(--font-md); font-weight: 600; }
+        .def-box p { margin: 0 0 5px 0; font-size: var(--font-xs); color: var(--text-secondary); line-height: 1.6; }
+        .def-box strong { color: var(--accent); font-weight: 600; }
+        
+        table.glass-table { width: 100%; border-collapse: collapse; font-size: var(--font-sm); text-align: left; }
+        table.glass-table th { background: rgba(210, 220, 232, 0.5); padding: 12px; color: var(--text-secondary); border-bottom: 1px solid rgba(0, 0, 0, 0.05); font-weight: 600; font-size: 0.82rem; }
+        table.glass-table td { padding: 12px 14px; border-bottom: 1px solid rgba(0, 0, 0, 0.02); line-height: 1.5; color: var(--text-primary); }
+        table.glass-table tr:hover { background: rgba(91, 159, 212, 0.06); }
+
+        .formula-box { font-size: var(--font-lg); font-weight: 600; background: rgba(220, 228, 238, 0.45); border: 1px solid rgba(255, 255, 255, 0.4); border-radius: var(--radius-md); padding: 16px; text-align: center; box-shadow: var(--shadow-neumorph-inset); }
+        .input-group { margin-bottom: 12px; }
+        .input-group label { display: block; margin-bottom: 4px; font-size: var(--font-xs); color: var(--text-secondary); font-weight: 500; }
+        .glass-input { width: 100%; padding: 10px 14px; background: rgba(220, 228, 238, 0.5); border: 1px solid rgba(0, 0, 0, 0.07); border-radius: var(--radius-sm); font-size: var(--font-sm); box-shadow: var(--shadow-neumorph-inset); transition: 0.25s; }
+        .glass-input:focus { border-color: var(--accent-neon); outline: none; }
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
+        .btn { padding: 7px 12px; border-radius: var(--radius-sm); font-size: var(--font-xs); cursor: pointer; transition: 0.25s; font-weight: 500; border: none; font-family: inherit; }
+        .btn-run { width: 100%; background: var(--accent); color: #fff; font-weight: 600; font-size: var(--font-md); padding: 12px; border-radius: var(--radius-md); box-shadow: var(--shadow-neumorph-sm); margin-bottom: 10px; }
+        .btn-outline { background: rgba(220, 228, 238, 0.45); border: 1px solid rgba(0, 0, 0, 0.06); color: var(--text-secondary); }
+        .btn-outline:hover { border-color: var(--accent-neon); color: var(--accent); box-shadow: 0 0 10px rgba(77, 160, 232, 0.15); }
+        
+        .chart-box-wrapper { background: rgba(220, 228, 238, 0.35); border: 1px solid rgba(255, 255, 255, 0.4); border-radius: var(--radius-md); padding: 12px; box-shadow: var(--shadow-neumorph-inset); width: 100%; }
+        .canvas-container { position: relative; width: 100%; }
+        
+        .res-area { font-size: var(--font-sm); color: var(--text-secondary); background: rgba(220, 228, 238, 0.42); padding: 14px 18px; border-radius: var(--radius-md); border: 1px solid rgba(255, 255, 255, 0.4); }
+        .res-highlight { font-size: var(--font-xl); font-weight: 700; color: var(--accent); }
+
+        /* 推导模态弹框 */
+        .deriv-box { position: relative; }
+        #deriv-content > p, #deriv-content > div, #deriv-content > strong, #deriv-content span:not(.MJXc-TeX) { color: var(--text-secondary); }
+        /* 确保MathJax公式中的\color{}不被CSS继承覆盖 */
+        .MJXc-display { color: unset !important; }
+        .MathJax .mord, .MathJax .mbin, .MathJax .mrel, .MathJax .mopen, .MathJax .mclose, .MathJax .mtext,
+        .MathJax .msup, .MathJax .msub, .MathJax .mo, .MathJax .mi { color: unset !important; }
+
+        /* ===== 仓鼠选择题模态框 ===== */
+        #quiz-overlay {
+            position: fixed; inset: 0; background: rgba(30,38,50,0.65); backdrop-filter: blur(6px);
+            display: none; align-items: center; justify-content: center; z-index: 2000; padding: 20px;
+        }
+        #quiz-overlay.show { display: flex; }
+        .quiz-box {
+            background: #e4eaf0; border-radius: 24px; border: 1px solid var(--glass-border);
+            box-shadow: 0 30px 70px rgba(0,0,0,0.25); width: 520px; max-width: 100%;
+            overflow: hidden; animation: quizPopIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes quizPopIn {
+            0% { opacity: 0; transform: scale(0.7) translateY(30px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .quiz-header {
+            padding: 18px 24px; display: flex; align-items: center; gap: 14px;
+            background: linear-gradient(135deg, rgba(220,228,238,0.8), rgba(210,220,232,0.8));
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .quiz-hamster-icon {
+            width: 44px; height: 44px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--ham-main), var(--ham-shadow));
+            display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15); flex-shrink: 0;
+        }
+        .quiz-header-text h3 { margin: 0; font-size: 0.95rem; color: var(--text-primary); font-weight: 700; }
+        .quiz-header-text p { margin: 2px 0 0; font-size: 0.72rem; color: var(--text-muted); }
+        .quiz-body { padding: 24px; }
+        .quiz-question-text {
+            font-size: 0.95rem; font-weight: 600; color: var(--text-primary);
+            line-height: 1.6; margin-bottom: 18px; text-align: center;
+        }
+        .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .quiz-opt-btn {
+            padding: 12px 14px; border-radius: 14px; border: 2px solid rgba(0,0,0,0.08);
+            background: rgba(255,255,255,0.5); cursor: pointer; font-size: 0.85rem;
+            font-weight: 500; color: var(--text-primary); transition: all 0.25s;
+            font-family: inherit; text-align: left; line-height: 1.4;
+            box-shadow: var(--shadow-neumorph-sm);
+        }
+        .quiz-opt-btn:hover:not(.disabled) {
+            border-color: var(--accent); background: rgba(91,159,212,0.1);
+            transform: translateY(-1px); box-shadow: 0 4px 12px rgba(91,159,212,0.2);
+        }
+        .quiz-opt-btn.correct {
+            border-color: #2e7d32 !important; background: rgba(46,125,50,0.15) !important;
+            color: #2e7d32 !important; font-weight: 700 !important;
+            box-shadow: 0 0 15px rgba(46,125,50,0.3) !important;
+        }
+        .quiz-opt-btn.wrong {
+            border-color: #c0392b !important; background: rgba(192,57,43,0.1) !important;
+            color: #c0392b !important;
+        }
+        .quiz-opt-btn.disabled { cursor: default; opacity: 0.6; }
+        .quiz-opt-btn.disabled.correct { opacity: 1; }
+        .quiz-footer {
+            padding: 14px 24px; display: flex; align-items: center; justify-content: space-between;
+            border-top: 1px solid rgba(0,0,0,0.05); background: rgba(220,228,238,0.4);
+        }
+        .quiz-explanation {
+            font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; flex: 1;
+        }
+        .quiz-explanation .correct-label { color: #2e7d32; font-weight: 700; }
+        .quiz-explanation .wrong-label { color: #c0392b; font-weight: 700; }
+        .quiz-next-btn {
+            padding: 8px 20px; border-radius: 12px; border: none;
+            background: var(--accent); color: #fff; font-size: 0.82rem; font-weight: 600;
+            cursor: pointer; margin-left: 12px; font-family: inherit;
+            box-shadow: var(--shadow-neumorph-sm); transition: all 0.25s;
+        }
+        .quiz-next-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-glow); }
+        .quiz-score { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
+        #modal-overlay { position: fixed; inset: 0; background: rgba(30, 38, 50, 0.6); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px;}
+        .modal-box { width: 680px; max-width: 100%; background: #e4eaf0; border-radius: var(--radius-xl); overflow: hidden; border: 1px solid var(--glass-border); box-shadow: 0 25px 60px rgba(0,0,0,0.2); }
+        .modal-header { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(220, 228, 238, 0.7); }
+        .modal-header h3 { margin: 0; color: var(--text-primary); font-weight: 600; font-size: var(--font-sm); }
+        .close-btn { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-secondary); }
+        #canvas-wrap { height: 350px; background: #dce3ea; position: relative; }
+        .structure-badge { position: absolute; top: 8px; right: 8px; background: rgba(220, 228, 238, 0.7); border: 1px solid rgba(0,0,0,0.06); color: var(--accent); padding: 3px 8px; border-radius: 5px; font-size: 0.64rem; font-weight: 600; pointer-events: none; }
+        .modal-footer { padding: 12px 18px; background: rgba(220, 228, 238, 0.6); display: flex; justify-content: space-between; gap: 5px; font-size: var(--font-sm); border-top: 1px solid rgba(0,0,0,0.05); }
+        
+        .sidebar-right { width: 190px; background: rgba(220, 228, 238, 0.5); border-left: 1px solid rgba(255, 255, 255, 0.35); padding: 22px 16px; display: none; flex-direction: column; overflow-y: auto; flex-shrink: 0; }
+        .sub-nav-title { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-bottom: 12px; }
+        .sub-nav { list-style: none; padding: 0; }
+        .sub-nav a { display: block; padding: 6px 0 6px 10px; color: var(--text-secondary); text-decoration: none; font-size: var(--font-xs); border-left: 2px solid transparent; margin-bottom: 4px; transition: 0.25s;}
+        .sub-nav a.active { color: var(--accent-neon); border-color: var(--accent-neon); font-weight: 600; }
+        
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 10px; }
+
+        /* 移动端返回栏：仅在桌面端默认隐藏 */
+        .mobile-back-bar { display: none !important; }
+
+        @media (max-width: 900px) {
+            .orbital-wrapper { flex-direction: column; gap: 8px; }
+            .orbital-col { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 100%; }
+            .grid-2 { grid-template-columns: 1fr; }
+            .sidebar, .sidebar-right { display: none !important; }
+            .sidebar-right { display: none !important; width: 160px !important; }
+            .mobile-back-bar {
+                display: flex; position: fixed; top: 0; left: 0; right: 0; height: 50px; z-index: 50;
+                background: rgba(220, 228, 238, 0.8); backdrop-filter: blur(20px); align-items: center; padding: 0 15px; border-bottom: 1px solid rgba(255,255,255,0.4);
+            }
+            .mobile-back-btn { padding: 6px 14px; border-radius: 16px; border: 1px solid rgba(0,0,0,0.06); background: rgba(255,255,255,0.5); font-size: var(--font-sm); cursor: pointer; margin-right: 10px; }
+            #dashboard-view { padding-top: 50px; }
+            .dynamic-island { top: 75px; height: 40px; min-width: 110px; }
+            .hamster-speech { font-size: 0.68rem; top: calc(100% + 10px); }
+
+            /* 响应式字号调整 */
+            .hero-title { font-size: 1.8rem !important; }
+            .hero-subtitle { font-size: 0.85rem !important; }
+            .card-title { font-size: 0.8rem !important; }
+            .card-icon { width: 32px; height: 32px; }
+            .central-logo { width: 80px !important; height: 80px !important; font-size: 1.6rem !important; }
+
+            /* 玻璃卡片 */
+            .glass-card { padding: 16px 18px !important; }
+            .module-card { padding: 12px 10px !important; min-width: 130px !important; }
+
+            /* 问答框 */
+            .quiz-box { max-width: 95vw !important; }
+
+            /* 表格滚动 */
+            table.glass-table { display: block; overflow-x: auto; white-space: nowrap; }
+            .table-wrap { overflow-x: auto; }
+        }
+    </style>
+</head>
+<body>
+    <div class="meteors-layer" id="meteorsLayer" aria-hidden="true"></div>
+    <div class="ripple-container" id="rippleContainer" aria-hidden="true"></div>
+    <canvas id="starfieldCanvas"></canvas>
+    
+    <!-- 灵动岛 + 立体爬肩学霸仓鼠 -->
+    <div class="dynamic-island" id="dynamicIsland" title="锂离子电池性能指标 · 在线分析平台">
+        <div class="di-icon">Li</div>
+        <div class="di-divider"></div>
+        <div class="di-text" id="diText">锂离子电池性能指标</div>
+        
+        <div class="hamster-spacer"></div>
+        <div class="hamster-container" id="hamsterContainer" title="点我互动~">
+            <div class="h3d-body" id="hamsterEl">
+                <div class="h3d-ear h3d-ear-l"><div class="h3d-ear-inner"></div></div>
+                <div class="h3d-ear h3d-ear-r"><div class="h3d-ear-inner"></div></div>
+                <div class="h3d-belly"></div>
+                <div class="h3d-glasses">
+                    <div class="h3d-glass"><div class="h3d-eye"><div class="h3d-shine"></div></div></div>
+                    <div class="h3d-bridge"></div>
+                    <div class="h3d-glass"><div class="h3d-eye"><div class="h3d-shine"></div></div></div>
+                </div>
+                <div class="h3d-cheek h3d-cheek-l"></div>
+                <div class="h3d-cheek h3d-cheek-r"></div>
+                <div class="h3d-nose"></div>
+                <div class="h3d-mouth"></div>
+            </div>
+            <div class="h3d-paw h3d-paw-l"></div>
+            <div class="h3d-paw h3d-paw-r" id="hamsterPaw">
+                <div class="h3d-pen"></div>
+            </div>
+        </div>
+        
+        <div class="hamster-speech" id="hamsterSpeech"></div>
+        <div class="di-status"></div>
+    </div>
+    
+    <!-- 首页 -->
+    <div id="home-view">
+        <div class="hero-top">
+            <div class="hero-badge">ENERGY STORAGE · BATTERY TECH</div>
+            <h1 class="hero-title">锂离子电池性能指标</h1>
+            <p class="hero-subtitle">储能电池技术 <span>|</span> 指导教师：刘景维</p>
+        </div>
+        <div class="orbital-wrapper">
+            <div class="orbital-col orbital-col--left">
+                <div class="module-card" onclick="navToMod('mod1')"><div class="card-icon"><svg viewBox="0 0 24 24"><path d="M18.364 2.636a2.828 2.828 0 1 1 4 4L7.5 21.5l-5.5 1.5 1.5-5.5L18.364 2.636z"/><polygon points="3.5 20.5 7.5 21.5 6.5 17.5" fill="currentColor" opacity="0.3"/></svg></div><div class="card-num">01</div><div class="card-title">性能指标理论定义</div><div class="card-hint">比容量·电压·能量密度</div></div>
+                <div class="module-card" onclick="navToMod('mod2')"><div class="card-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18 M3 15h18"/><circle cx="8" cy="6" r="2.2" fill="currentColor" opacity="0.3"/></svg></div><div class="card-num">02</div><div class="card-title">正负极材料参数库</div><div class="card-hint">LFP·NCM·石墨·SiC</div></div>
+                <div class="module-card" onclick="navToMod('mod3')"><div class="card-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18 M3 15h18"/><circle cx="8" cy="6" r="2.5" fill="currentColor" opacity="0.3"/></svg></div><div class="card-num">03</div><div class="card-title">理论计算</div><div class="card-hint">比容量·能量·功率</div></div>
+            </div>
+            <div class="orbital-center"><div class="central-logo" onclick="goHome()" title="返回首页">Li</div></div>
+            <div class="orbital-col orbital-col--right">
+                <div class="module-card" onclick="navToMod('mod4')"><div class="card-icon"><svg viewBox="0 0 24 24"><path d="M3 21V3l4 4 4-2 4 4 4-2v14H3z"/><rect x="14" y="11" width="4" height="10" fill="currentColor" opacity="0.22"/></svg></div><div class="card-num">04</div><div class="card-title">损失计算分析</div><div class="card-hint">SEI·衰减·极化</div></div>
+                <div class="module-card" onclick="navToMod('mod5')"><div class="card-icon"><svg viewBox="0 0 24 24"><rect x="3" y="14" width="5" height="7"/><rect x="9" y="8" width="5" height="13"/><rect x="15" y="16" width="5" height="5"/><path d="M10.5 4l1.5-2 1.5 2M12 2v4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></div><div class="card-num">05</div><div class="card-title">体系性能对比分析</div><div class="card-hint">雷达图·多维评估</div></div>
+                <div class="module-card" onclick="navToMod('mod6')"><div class="card-icon"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="5" rx="1"/><path d="M12 10v4"/><path d="M7 21h10a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2z" fill="currentColor" opacity="0.18"/></svg></div><div class="card-num">06</div><div class="card-title">性能匹配设计原则</div><div class="card-hint">动力·消费·储能</div></div>
+            </div>
+        </div>
+        <div class="home-footer">© 锂离子电池性能指标网站 · 设计者：<strong>王兴源</strong>、<strong>周午婕</strong></div>
+    </div>
+
+    <!-- 详情页 -->
+    <div id="dashboard-view" class="hidden">
+        <div class="mobile-back-bar" id="mobileBackBar">
+            <button class="mobile-back-btn" onclick="goHome()">← 返回</button>
+            <span class="mobile-back-title" id="mobileBackTitle">详情页</span>
+        </div>
+        <aside class="sidebar">
+            <div class="brand-header" onclick="goHome()">
+                <div class="brand-logo">Li</div>返回首页
+            </div>
+            <ul class="main-nav">
+                <li><a href="#" onclick="switchMain(1)" id="btn-mod1">1. 性能指标理论定义</a></li>
+                <li><a href="#" onclick="switchMain(2)" id="btn-mod2">2. 正负极材料参数库</a></li>
+                <li><a href="#" onclick="switchMain(3)" id="btn-mod3">3. 理论计算</a></li>
+                <li><a href="#" onclick="switchMain(4)" id="btn-mod4">4. 损失计算分析</a></li>
+                <li><a href="#" onclick="switchMain(5)" id="btn-mod5">5. 性能对比分析</a></li>
+                <li><a href="#" onclick="switchMain(6)" id="btn-mod6">6. 匹配设计原则</a></li>
+            </ul>
+        </aside>
+        
+        <main class="content-area" id="main-scroll">
+            
+                       <!-- 模块1：性能指标理论定义 -->
+            <section id="sec-mod1" class="page-sec hidden">
+                <h2 class="section-title">1. 性能指标理论定义</h2>
+                <div class="glass-card grid-2" style="grid-template-columns: 1fr 1fr;">
+                    <div class="def-box">
+                        <h4>理论比容量 <span class="deriv-badge" onclick="openDeriv('cap')">推导</span></h4>
+                        <p><strong>定义：</strong>单位质量电化学活性物质在发生完全法拉第氧化还原反应时所能释放的理论最大电量（mAh/g）。</p>
+                        <p><strong>物理意义：</strong>由法拉第定律推导得出，代表特定电极材料晶格内发生可逆嵌脱锂过程的能力上限与热力学极限。</p>
+                        <p><strong>应用价值：</strong>是进行新材料体系筛选、理论能量密度评估以及全电池N/P比参数设计的核心技术基准。</p>
+                    </div>
+                    <div class="def-box">
+                        <h4>电池电动势 <span class="deriv-badge" onclick="openDeriv('emf')">推导</span></h4>
+                        <p><strong>定义：</strong>处于热力学平衡态且无电流流经外电路时，电池正负两极间客观存在的理想要逆电势差（V）。</p>
+                        <p><strong>物理意义：</strong>其数值由电池系统总反应的吉布斯自由能变化量决定，反映了体系将化学势能转化为电功的热力学极限能力。</p>
+                        <p><strong>应用价值：</strong>用于构建电化学窗口模型，指导高压正极开发及与之适配的抗氧化电解液溶剂体系选型。</p>
+                    </div>
+                    <div class="def-box">
+                        <h4>工作电压 <span class="deriv-badge" onclick="openDeriv('voltage')">推导</span></h4>
+                        <p><strong>定义：</strong>处于实际负载及闭路状态下，带有定值工作电流输出时的电池两极电压。常以输出总电能与总释电量的比值作为平均工作电压。</p>
+                        <p><strong>物理意义：</strong>在输出工况下，由于欧姆极化、活化极化及浓差极化的多重叠加阻力，实际端电压始终低于处于平衡态的理论电动势。</p>
+                        <p><strong>应用价值：</strong>作为储能系统成组设计的基准，直接约束逆变器拓扑架构并决定应用终端的实际运行电压等级。</p>
+                    </div>
+                    <div class="def-box">
+                        <h4>电池内阻 <span class="deriv-badge" onclick="openDeriv('res')">推导</span></h4>
+                        <p><strong>定义：</strong>电子与离子在电极复合网络及电解液中传导所遭遇的总阻抗，涵盖欧姆内阻及涉及电荷转移界面的极化内阻（mΩ）。</p>
+                        <p><strong>物理意义：</strong>其动力学本质是界面离子脱溶剂化势垒、固态电解质层穿透阻力及内部传质速率的集中宏观体现；是引发不可逆焦耳热损耗的根源。</p>
+                        <p><strong>应用价值：</strong>评判电池高倍率连续充放承载能力、设计电池包热管理系统（TMS）并用于电池健康状态（SOH）监测。</p>
+                    </div>
+                    <div class="def-box">
+                        <h4>电流与倍率 <span class="deriv-badge" onclick="openDeriv('cur')">推导</span></h4>
+                        <p><strong>定义：</strong>电流表征单位时间内电荷定向迁移的速率（A）；放电倍率（C-Rate）指将电池标称容量完全释放完毕所需理论小时数的倒数。</p>
+                        <p><strong>物理意义：</strong>该指标受制于电极反应动力学中的固/液相内Li⁺扩散通量极值；高倍率工况往往诱发剧烈的极化从而提前触及截止电压。</p>
+                        <p><strong>应用价值：</strong>是设定电池管理系统（BMS）快充充电策略约束条件及其在短时大功率工况下衰减分析的重要边界参量。</p>
+                    </div>
+                    <div class="def-box">
+                       <h4>能量密度 <span class="deriv-badge" onclick="openDeriv('energy')">推导</span></h4>
+                        <p><strong>定义：</strong>指单位电芯质量（Wh/kg，比能量）或单位电芯体积（Wh/L，能量密度）所能输出的可逆电能量。</p>
+                        <p><strong>物理意义：</strong>是电极材料的比容量与电压平台的复合乘积，其实际水平不仅取决于主材质，还受限于非活性附属构件（隔膜、集流体等）的体积重量摊薄。</p>
+                        <p><strong>应用价值：</strong>在纯电动汽车续航提升、消费电子空间受限类设备及航空电动化等领域是决定产品竞争力的第一阶属性指标。</p>
+                    </div>
+                    <div class="def-box">
+                        <h4>功率密度 <span class="deriv-badge" onclick="openDeriv('power')">推导</span></h4>
+                        <p><strong>定义：</strong>在指定的放电深度及限定热学边界下，单位质量或体积系统所能持续或瞬态安全释放的电功率输出绝对值（W/kg 或 W/L）。</p>
+                        <p><strong>物理意义：</strong>遵循全电路欧姆定律，最大瞬态输出功率受限于电极网格多维传输的总体欧姆/极化阻抗，内阻越低，理论输出峰值越高。</p>
+                        <p><strong>应用价值：</strong>适用于量化动力储能终端的瞬时机动性能（如重型商用车爬坡扭矩）以及混合动力中再生制动能量的高效捕获能力。</p>
+                    </div>
+                    <div class="def-box">
+                        <h4>容量衰减与自放电 <span class="deriv-badge" onclick="openDeriv('life')">推导</span></h4>
+                        <p><strong>定义：</strong>循环寿命指额定测试条例下容量衰减至规定寿命终止下限指标的充放总次数；自放电指电池在开路搁置期间因副反应造成的可逆/不可逆容量流失现象。</p>
+                        <p><strong>物理意义：</strong>本源因于界面副反应导致不可逆活性锂库存流失（LLI）、SEI衍生物增厚固化及内部微短路电荷耗散（自放电）。定性符合阿伦尼乌斯经验退化模型。</p>
+                        <p><strong>应用价值：</strong>作为建立生命周期平准化成本预算（LCOE）的最严苛制约因子，也用以评估活性材料界面修饰及电解液成膜添加剂的有效性。</p>
+                    </div>
+                    <div class="def-box">
+                        <h4>SOC与DOD <span class="deriv-badge" onclick="openDeriv('soc')">推导</span></h4>
+                        <p><strong>定义：</strong>荷电状态（State of Charge）指电池当前剩余容量与其标称容量的百分比，用于表征电池当前电量水平；放电深度（Depth of Discharge）则反映单次放电过程中从满电量释放掉的容量比例，与SOC互补（DOD = 1 - SOC）。</p>
+                        <p><strong>物理意义：</strong>SOC反映了电池内部活性锂离子在正负极之间的分布状态，是BMS估算的核心状态量。其准确估算依赖于开路电压（OCV）-SOC曲线、电流积分法或等效电路模型。</p>
+                        <p><strong>应用价值：</strong>是电池管理系统（BMS）防止过充过放、估算剩余续航里程、优化充电策略（如SOC>90%时切换为恒压充电）的关键输入量。</p>
+                    </div>
+                    <div class="def-box">
+                        <h4>库仑效率 <span class="deriv-badge" onclick="openDeriv('ce')">推导</span></h4>
+                        <p><strong>定义：</strong>库仑效率（Coulombic Efficiency, CE）指电池在充放电循环中放出的电荷量与充入电荷量的比值，首次充放电的库仑效率（ICE）尤为关键，因为它反映了SEI形成等不可逆副反应对活性锂的初始消耗。</p>
+                        <p><strong>物理意义：</strong>ICE = C_discharge / C_charge × 100%，其低于100%的根本原因在于首次充电过程中部分锂库存被不可逆地消耗于SEI膜形成、电解液分解等副反应。</p>
+                        <p><strong>应用价值：</strong>是评估负极材料适用性的核心指标。硅基负极ICE约85~92%，石墨约92~95%，钛酸锂可达99.9%以上。低ICE意味着需要正极过量设计（N/P比增大）来补偿初始锂损失。</p>
+                    </div>
+                    <div class="def-box">
+                        <h4>热力学可逆热 <span class="deriv-badge" onclick="openDeriv('heat')">推导</span></h4>
+                        <p><strong>定义：</strong>电池在可逆充放电过程中由于熵变（ΔS）引起的可逆热效应，由电化学热力学推导得出。根据Gibbs-Helmholtz方程，可逆热功率为 <span class="math-tex">\(Q_{rev} = I \cdot T \cdot \frac{dE}{dT}\)</span>，其中 <span class="math-tex">\(\frac{dE}{dT}\)</span> 为电动势的温度系数。</p>
+                        <p><strong>物理意义：</strong>当 <span class="math-tex">\(\frac{dE}{dT} > 0\)</span> 时电池吸热（温度下降），<span class="math-tex">\(\frac{dE}{dT} < 0\)</span> 时放热。LFP电池的温度系数接近零，因此可逆热效应极小；而高镍三元电池的温度系数显著为负，放电时放热明显。</p>
+                        <p><strong>应用价值：</strong>是电池热管理系统（TMS）设计的热源分析基础。总发热 = 不可逆焦耳热（I²R）+ 可逆热（熵效应），在大倍率工况下不可逆热占主导，在低倍率下可逆热的影响更为显著。</p>
+                    </div>
+                    <div class="def-box">
+                        <h4>能量效率 <span class="deriv-badge" onclick="openDeriv('ee')">推导</span></h4>
+                        <p><strong>定义：</strong>能量效率（Round-Trip Energy Efficiency）定义为电池放电输出能量与充电输入能量的比值（%），反映充放电循环中的能量损失程度。</p>
+                        <p><strong>物理意义：</strong><span class="math-tex">\(\eta_{energy} = \frac{\int_{dis} V(t)I(t)dt}{\int_{ch} V(t)I(t)dt} = \frac{C_{dis} \times \overline{V}_{dis}}{C_{ch} \times \overline{V}_{ch}}\)</span>，由欧姆焦耳热和极化过电位共同决定，内阻越大、倍率越高，能量效率越低。</p>
+                        <p><strong>应用价值：</strong>是评估储能系统全生命周期运行经济性的核心指标。LFP储能系统能量效率约92~95%，LTO系统可达97~98%，直接决定度电循环成本（LCOS）。</p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 模块2：正负极电极材料参数库 -->
+            <section id="sec-mod2" class="page-sec hidden">
+                <h2 class="section-title">2. 正负极电极材料参数库</h2>
+                <div class="glass-card table-wrap">
+                    <table class="glass-table">
+                        <thead>
+                            <tr>
+                                <th>类别</th><th>材料名称</th>
+                                <th>理论比容量<br><span class="math-tex">\((mAh/g)\)</span></th>
+                                <th>平均工作电压<br><span class="math-tex">\((V)\)</span></th>
+                                <th style="width:25%;">材料优缺点概况</th>
+                                <th>产业适用场景</th>
+                                <th>微观晶体结构</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td rowspan="5" style="color:var(--accent);font-weight:700;">正极材料</td><td><b>三元材料 NCM622</b></td><td class="math-tex" style="color:#c0392b;">\(276\)</td><td class="math-tex">\(3.6\)</td><td>优：能量密度与结构稳定性兼顾<br>缺：钴含量较高，成本受钴价波动影响大</td><td>主流乘用电动车</td><td><button class="btn btn-outline" onclick="open3D('三元NCM622','layered_ncm','α-NaFeO₂型层状结构 (R-3m)')">查看晶体结构</button></td></tr>
+                            <tr><td><b>高镍三元 NCM811</b></td><td class="math-tex" style="color:#c0392b;">\(275\)</td><td class="math-tex">\(3.7\)</td><td>优：能量密度高<br>缺：循环过程中结构应力大，高温易释氧</td><td>长续航高端电动车</td><td><button class="btn btn-outline" onclick="open3D('高镍三元NCM811','layered_ncm','α-NaFeO₂型层状结构 (R-3m)')">查看晶体结构</button></td></tr>
+                            <tr><td><b>钴酸锂 LCO</b></td><td class="math-tex" style="color:#c0392b;">\(274\)</td><td class="math-tex">\(3.85\)</td><td>优：压实密度高，体积能量密度优异<br>缺：成本高，过充时结构不稳定，脱锂&gt;50%发生不可逆相变</td><td>高端便携电子设备</td><td><button class="btn btn-outline" onclick="open3D('钴酸锂LCO','layered_lco','α-NaFeO₂型菱方层状结构 (R-3m)')">查看晶体结构</button></td></tr>
+                            <tr><td><b>磷酸铁锂 LFP</b></td><td class="math-tex" style="color:#2e7d32;">\(170\)</td><td class="math-tex">\(3.2\)</td><td>优：P-O共价键使热稳定性优异，循环寿命长<br>缺：压实密度较低，低温性能较差</td><td>储能系统、纯电大巴及普及型乘用车</td><td><button class="btn btn-outline" onclick="open3D('磷酸铁锂LFP','olivine','正交橄榄石结构 (Pnma)')">查看晶体结构</button></td></tr>
+                            <tr><td><b>锰酸锂 LMO</b></td><td class="math-tex" style="color:#2e7d32;">\(148\)</td><td class="math-tex">\(3.8\)</td><td>优：成本低，抗过充性能好<br>缺：Jahn-Teller效应导致Mn溶出，高温循环衰减</td><td>低速电动车及高功率应用</td><td><button class="btn btn-outline" onclick="open3D('锰酸锂LMO','spinel','立方尖晶石结构 (Fd-3m)')">查看晶体结构</button></td></tr>
+                            <tr><td rowspan="4" style="color:#5b9fd4;font-weight:700;">负极材料</td><td><b>硅碳负极 SiC</b></td><td class="math-tex" style="color:#1a6b8a;">\(4200\)</td><td class="math-tex">\(0.4\)</td><td>优：合金化储锂机制，比容量远超石墨<br>缺：嵌锂体积膨胀&gt;300%，导致电极粉化失效</td><td>下一代高比能长续航电池</td><td><button class="btn btn-outline" onclick="open3D('硅碳复合SiC','silicon','无定形/晶态硅复合')">查看晶体结构</button></td></tr>
+                            <tr><td><b>天然石墨</b></td><td class="math-tex" style="color:#1a6b8a;">\(372\)</td><td class="math-tex">\(0.1\)</td><td>优：资源丰富，比容量较高<br>缺：层间距小，低温快充易析锂</td><td>消费电子及常规应用</td><td><button class="btn btn-outline" onclick="open3D('天然石墨','graphite','六方层状结构 (P6₃/mmc)')">查看晶体结构</button></td></tr>
+                            <tr><td><b>人造石墨</b></td><td class="math-tex" style="color:#1a6b8a;">\(372\)</td><td class="math-tex">\(0.1\)</td><td>优：各向同性好，循环稳定性较天然石墨优<br>缺：高温石墨化工序增加制造成本</td><td>主流动力电池及快充应用</td><td><button class="btn btn-outline" onclick="open3D('人造石墨','graphite','六方层状结构 (P6₃/mmc)')">查看晶体结构</button></td></tr>
+                            <tr><td><b>钛酸锂 LTO</b></td><td class="math-tex" style="color:#1a6b8a;">\(175\)</td><td class="math-tex">\(1.55\)</td><td>优：零应变材料，循环寿命可达万次以上<br>缺：脱锂电位高（1.55V），降低全电池能量密度</td><td>低温环境及高倍率快充场景</td><td><button class="btn btn-outline" onclick="open3D('钛酸锂LTO','spinel','面心立方尖晶石结构 (Fd-3m)')">查看晶体结构</button></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <!-- 模块3：理论计算 -->
+            <section id="sec-mod3" class="page-sec hidden">
+                <h2 class="section-title">3. 理论计算架构</h2>
+                
+                <div id="sub-3-1" class="glass-card">
+                    <h3 class="sub-title">理论比容量计算</h3>
+                    <div class="grid-2">
+                        <div class="left-col">
+                            <div class="formula-box">$$ C = \frac{n \times 96500}{3.6 \times M} $$</div>
+                            <div class="def-box"><p>基于法拉第定律：<span class="math-tex">\(n\)</span> 为电极反应转移电子数，<span class="math-tex">\(96500\)</span> 为法拉第常量（C/mol），<span class="math-tex">\(M\)</span> 为活性物质摩尔质量（g/mol）。该公式适用于所有发生法拉第反应的电极材料，是电化学储能器件设计中最基础的理论计算之一。</p></div>
+                        </div>
+                        <div class="right-col">
+                            <div class="input-group"><label>转移电子数 n（mol）</label><input type="number" id="c3_n" class="glass-input" value="1"></div>
+                            <div class="input-group"><label>材料摩尔质量 M（g/mol）</label><input type="number" id="c3_m" class="glass-input" value="157.76"></div>
+                            <div class="btn-group">
+                                <button class="btn btn-outline" onclick="fillC3(1,157.76)">磷酸铁锂</button>
+                                <button class="btn btn-outline" onclick="fillC3(1,97.87)">钴酸锂</button>
+                                <button class="btn btn-outline" onclick="fillC3(1,97.3)">三元811</button>
+                                <button class="btn btn-outline" onclick="fillC3(1,180.8)">锰酸锂</button>
+                                <button class="btn btn-outline" onclick="fillC3(1,72.06)">天然石墨</button>
+                            </div>
+                            <button class="btn btn-run" onclick="calcC3()">计算</button>
+                            <div class="res-area">理论比容量：<span id="r3_res" class="res-highlight">169.91</span> <span class="math-tex">\(mAh/g\)</span></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="sub-3-2" class="glass-card">
+                    <h3 class="sub-title">电池能量密度计算</h3>
+                    <div class="grid-2">
+                        <div class="left-col">
+                            <div class="formula-box">$$ E_{m} = C \times V \quad E_{v} = C \times V \times \rho $$</div>
+                            <div class="def-box"><p>质量能量密度 <span class="math-tex">\(E_m\)</span>（Wh/kg）由比容量与工作电压的乘积决定；体积能量密度 <span class="math-tex">\(E_v\)</span>（Wh/L）在此基础上乘以极片压实密度 <span class="math-tex">\(\rho\)</span>（g/cm³）。两者共同决定了电池在实际应用中的续航表现。</p></div>
+                            <div class="chart-box-wrapper"><div class="canvas-container" style="height:210px;"><canvas id="chartCurve4"></canvas></div></div>
+                        </div>
+                        <div class="right-col">
+                            <div class="input-group"><label>电极比容量（mAh/g）</label><input type="number" id="c4_c" class="glass-input" value="160"></div>
+                            <div class="input-group"><label>平均工作电压（V）</label><input type="number" id="c4_v" class="glass-input" value="3.2"></div>
+                            <div class="input-group"><label>极片压实密度（g/cm³）</label><input type="number" id="c4_p" class="glass-input" value="2.4"></div>
+                            <div class="btn-group">
+                                <button class="btn btn-outline" onclick="fillC4(160,3.2,2.4)">磷酸铁锂</button>
+                                <button class="btn btn-outline" onclick="fillC4(180,3.85,4.0)">钴酸锂</button>
+                                <button class="btn btn-outline" onclick="fillC4(200,3.7,3.5)">三元811</button>
+                                <button class="btn btn-outline" onclick="fillC4(120,3.8,3.0)">锰酸锂</button>
+                                <button class="btn btn-outline" onclick="fillC4(160,1.55,2.0)">钛酸锂</button>
+                            </div>
+                            <button class="btn btn-run" onclick="calcC4()">计算</button>
+                            <div class="res-area">质量能量密度：<span id="r4_m" class="res-highlight">512.00</span> Wh/kg<br><br>体积能量密度：<span id="r4_v" class="res-highlight">1228.80</span> Wh/L</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sub-3-3" class="glass-card">
+                    <h3 class="sub-title">电池功率密度计算</h3>
+                    <div class="grid-2">
+                        <div class="left-col">
+                            <div class="formula-box">$$ P_{density} = \frac{P_{total}}{Mass \text{ 或 } Vol} $$</div>
+                            <div class="def-box"><p>功率密度是衡量电池瞬时输出能力的关键指标，受锂离子固相扩散速率、电解液电导率及极化内阻共同影响。高功率密度对于启停电源、电网调频等场景至关重要。</p></div>
+                            <div class="chart-box-wrapper"><div class="canvas-container" style="height:190px;"><canvas id="chartPower5"></canvas></div></div>
+                        </div>
+                        <div class="right-col">
+                            <div class="input-group"><label>电池放电总功率（W）</label><input type="number" id="c5_p" class="glass-input" value="100000"></div>
+                            <div class="input-group"><label>电池总质量（kg）</label><input type="number" id="c5_m" class="glass-input" value="250"></div>
+                            <div class="input-group"><label>电池总体积（L）</label><input type="number" id="c5_v" class="glass-input" value="150"></div>
+                            <div class="btn-group">
+                                <button class="btn btn-outline" onclick="fillC5(80000,250,150)">磷酸铁锂</button>
+                                <button class="btn btn-outline" onclick="fillC5(15,0.05,0.02)">钴酸锂</button>
+                                <button class="btn btn-outline" onclick="fillC5(150000,200,120)">三元811</button>
+                                <button class="btn btn-outline" onclick="fillC5(50000,150,100)">锰酸锂</button>
+                                <button class="btn btn-outline" onclick="fillC5(200000,300,180)">钛酸锂</button>
+                            </div>
+                            <button class="btn btn-run" onclick="calcC5()">计算</button>
+                            <div class="res-area">质量功率密度：<span id="r5_m" class="res-highlight">400.00</span> W/kg<br><br>体积功率密度：<span id="r5_v" class="res-highlight">666.67</span> W/L</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sub-3-4" class="glass-card">
+                    <h3 class="sub-title">标称比容量估算</h3>
+                    <div class="grid-2">
+                        <div class="left-col">
+                            <div class="formula-box">$$ C_{nom} = C_{theo} \times \eta_{ICE} \times \omega_{active} \times K_{use} $$</div>
+                            <div class="def-box"><p>定义：扣除非活性组分（导电剂、粘结剂等），包含首次SEI形成消耗的不可逆容量和为保证结构稳定预留的容量余量后，工程实际可发挥容量。其中 <span class="math-tex">\(\eta_{ICE}\)</span> 为首次库仑效率，<span class="math-tex">\(\omega_{active}\)</span> 为活性物质质量分数，<span class="math-tex">\(K_{use}\)</span> 为可逆脱嵌利用率。</p></div>
+                        </div>
+                        <div class="right-col">
+                            <div class="input-group"><label>材料理论比容量（mAh/g）</label><input type="number" id="c7_c" class="glass-input" value="274"></div>
+                            <div class="input-group"><label>活性物质质量分数（%）</label><input type="number" id="c7_w" class="glass-input" value="95"></div>
+                            <div class="input-group"><label>首次库仑效率（%）</label><input type="number" id="c7_e" class="glass-input" value="95"></div>
+                            <div class="input-group"><label>可逆脱嵌利用率（%）</label><input type="number" id="c7_k" class="glass-input" value="55"></div>
+                            <div class="btn-group">
+                                <button class="btn btn-outline" onclick="fillC7(170,95,99,95)">磷酸铁锂</button>
+                                <button class="btn btn-outline" onclick="fillC7(274,96,95,55)">钴酸锂</button>
+                                <button class="btn btn-outline" onclick="fillC7(275,95,88,85)">高镍三元</button>
+                                <button class="btn btn-outline" onclick="fillC7(372,95,92,90)">人造石墨</button>
+                                <button class="btn btn-outline" onclick="fillC7(1000,90,85,80)">硅碳复合</button>
+                            </div>
+                            <button class="btn btn-run" onclick="calcC7()">计算</button>
+                            <div class="res-area">估算标称比容量：<span id="r7_res" class="res-highlight">135.94</span> mAh/g</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 模块4：损失分析 -->
+            <section id="sec-mod4" class="page-sec hidden">
+                <h2 class="section-title">4. 损失计算分析</h2>
+
+                <div id="sub-4-1" class="glass-card">
+                    <h3 class="sub-title">首次不可逆消耗损失比例估算</h3>
+                    <div class="grid-2">
+                        <div class="left-col">
+                            <div class="formula-box">$$ \text{损失比例} = \frac{S_{BET} \times k_{SEI}}{C_{theo}} \times 100\% $$</div>
+                            <div class="def-box"><p>首次充电（化成）阶段，电解液在负极表面发生还原反应，形成固态电解质界面膜（SEI膜）。SEI膜是保护电极的必要结构，但形成过程不可逆消耗了正极脱出的活性锂，导致首次库仑效率低于100%。负极比表面积（BET）越大，形成SEI膜消耗的活性锂越多，首次不可逆损失越大。</p></div>
+                        </div>
+                        <div class="right-col">
+                            <div class="input-group"><label>负极理论比容量 C（mAh/g）</label><input type="number" id="c6_c" class="glass-input" value="372"></div>
+                            <div class="input-group"><label>负极比表面积 S_BET（m²/g）</label><input type="number" id="c6_bet" class="glass-input" value="3.5"></div>
+                            <div class="input-group"><label>SEI成膜消耗系数 k（mAh/m²）</label><input type="number" id="c6_k" class="glass-input" value="2.5"></div>
+                            <div class="btn-group">
+                                <button class="btn btn-outline" onclick="fillC6(372,6.0,2.5)">天然石墨</button>
+                                <button class="btn btn-outline" onclick="fillC6(372,1.5,2.5)">人造石墨</button>
+                                <button class="btn btn-outline" onclick="fillC6(1000,15.0,3.0)">硅碳复合</button>
+                                <button class="btn btn-outline" onclick="fillC6(300,8.0,2.5)">硬碳材料</button>
+                                <button class="btn btn-outline" onclick="fillC6(175,10.0,0.5)">钛酸锂</button>
+                            </div>
+                            <button class="btn btn-run" onclick="calcC6()">计算首次不可逆损失</button>
+                            <div class="res-area">首次化成不可逆损失占比：<span id="r6_res" class="res-highlight" style="color:#c0392b;">2.35</span> %</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sub-4-2" class="glass-card">
+                    <h3 class="sub-title">电池循环寿命衰减预测</h3>
+                    <div class="grid-2">
+                        <div class="left-col">
+                            <div class="formula-box">$$ C_n = C_0 \times (1 - \alpha)^n $$</div>
+                            <div class="def-box"><p>基于固定衰减系数的指数衰减模型，用于预测 n 次循环后的剩余容量及健康状态（SOH）。该模型假设每次充放电循环以恒定比例 <span class="math-tex">\(\alpha\)</span> 损失容量，适用于评估不同材料体系在长期循环中的容量保持能力。</p></div>
+                            <div class="chart-box-wrapper"><div class="canvas-container" style="height:210px;"><canvas id="chartCurve8"></canvas></div></div>
+                        </div>
+                        <div class="right-col">
+                            <div class="input-group"><label>初始标称容量 C₀（mAh）</label><input type="number" id="c8_c0" class="glass-input" value="3000"></div>
+                            <div class="input-group"><label>单次循环容量衰减系数 α（%）</label><input type="number" id="c8_a" class="glass-input" value="0.04"></div>
+                            <div class="input-group"><label>目标循环次数 n（次）</label><input type="number" id="c8_n" class="glass-input" value="800"></div>
+                            <div class="btn-group">
+                                <button class="btn btn-outline" onclick="fillC8(3000,0.015,3000)">磷酸铁锂</button>
+                                <button class="btn btn-outline" onclick="fillC8(3000,0.04,800)">钴酸锂</button>
+                                <button class="btn btn-outline" onclick="fillC8(3000,0.05,1000)">高镍三元</button>
+                                <button class="btn btn-outline" onclick="fillC8(3000,0.06,600)">锰酸锂</button>
+                                <button class="btn btn-outline" onclick="fillC8(3000,0.005,10000)">钛酸锂</button>
+                            </div>
+                            <button class="btn btn-run" onclick="calcC8()">计算</button>
+                            <div class="res-area">n 次循环后剩余容量：<span id="r8_c" class="res-highlight">2178.68</span> mAh<br>（SOH：<span id="r8_soh">72.62</span>%）</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sub-4-3" class="glass-card">
+                    <h3 class="sub-title">充放电极化过电位估算</h3>
+                    <div class="grid-2">
+                        <div class="left-col">
+                            <div class="formula-box">$$ U_{op} = U_{ocv} - I \times R_{internal} $$</div>
+                            <div class="def-box"><p>负载条件下，由于欧姆内阻和极化内阻的存在，工作电压低于开路电压（OCV）。电流越大，压降越显著；当电压降至截止电压时，电池停止放电。该公式对评估大倍率放电下的电压平台和可用能量具有重要意义。</p></div>
+                        </div>
+                        <div class="right-col">
+                            <div class="input-group"><label>开路电压 U_ocv（V）</label><input type="number" id="c9_u" class="glass-input" value="3.85"></div>
+                            <div class="input-group"><label>放电电流 I（A）</label><input type="number" id="c9_i" class="glass-input" value="2"></div>
+                            <div class="input-group"><label>电池内阻 R（mΩ）</label><input type="number" id="c9_r" class="glass-input" value="45"></div>
+                            <div class="btn-group">
+                                <button class="btn btn-outline" onclick="fillC9(3.2,100,5)">LFP动力电池</button>
+                                <button class="btn btn-outline" onclick="fillC9(3.85,2,45)">LCO消费电子</button>
+                                <button class="btn btn-outline" onclick="fillC9(3.7,150,3)">NCM快充型</button>
+                                <button class="btn btn-outline" onclick="fillC9(3.8,50,8)">LMO轻型电池</button>
+                                <button class="btn btn-outline" onclick="fillC9(1.55,200,2)">LTO功率型</button>
+                            </div>
+                            <button class="btn btn-run" onclick="calcC9()">计算</button>
+                            <div class="res-area">极化过电位：<span id="r9_drop" class="res-highlight">0.09</span> V &emsp;<br><br>工作电压：<span id="r9_op" style="color:var(--accent);font-size:1.1rem;font-weight:700;">3.76</span> V</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sub-4-4" class="glass-card">
+                    <h3 class="sub-title">充放电倍率性能评估</h3>
+                    <div class="grid-2">
+                        <div class="left-col">
+                            <div class="formula-box">$$ C_{rate} = C_{1C} \times (1 - \beta \times Rate) $$</div>
+                            <div class="def-box"><p>在高倍率充放电条件下，由于锂离子在电极材料中的固相扩散速率限制以及极化加剧，实际可用容量随倍率升高而衰减。倍率衰减系数 <span class="math-tex">\(\beta\)</span> 反映了材料对高倍率的耐受能力。</p></div>
+                            <div class="chart-box-wrapper"><div class="canvas-container" style="height:190px;"><canvas id="chartCurve10"></canvas></div></div>
+                        </div>
+                        <div class="right-col">
+                            <div class="input-group"><label>1C标称容量（mAh）</label><input type="number" id="c10_c" class="glass-input" value="4000"></div>
+                            <div class="input-group"><label>工作倍率 C-Rate（C）</label><input type="number" id="c10_rate" class="glass-input" value="5"></div>
+                            <div class="input-group"><label>倍率衰减系数 β</label><input type="number" id="c10_beta" class="glass-input" value="0.04"></div>
+                            <div class="btn-group">
+                                <button class="btn btn-outline" onclick="fillC10(4000,3,0.05)">磷酸铁锂</button>
+                                <button class="btn btn-outline" onclick="fillC10(4000,1,0.12)">钴酸锂</button>
+                                <button class="btn btn-outline" onclick="fillC10(4000,5,0.08)">高镍三元</button>
+                                <button class="btn btn-outline" onclick="fillC10(4000,10,0.04)">锰酸锂</button>
+                                <button class="btn btn-outline" onclick="fillC10(4000,20,0.01)">钛酸锂</button>
+                            </div>
+                            <button class="btn btn-run" onclick="calcC10()">计算</button>
+                            <div class="res-area">该倍率下可用容量：<span id="r10_c" class="res-highlight">3200.00</span> mAh</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sub-4-5" class="def-box" style="border-left-color:#c0392b;">
+                    <h3 class="sub-title" style="color:#c0392b;margin-top:0;border-bottom:none;">计算结果误差说明：理论与实际容量偏差分析</h3>
+                    <p style="color:var(--text-secondary);line-height:1.8;font-size:0.75rem;">理论计算结果与实际电池性能之间存在偏差，主要来源于以下三个方面：<br><br>1. <b>正极材料相变导致可逆嵌锂量受限：</b>以 LiCoO₂ 为例，理论比容量为 274 mAh/g，但脱锂超过 50% 时会发生不可逆相变，层状结构坍塌并伴随释氧，因此实际可利用容量仅约为理论值的一半。<br><br>2. <b>欧姆极化和浓差极化导致的电压损失：</b>电池内阻（欧姆内阻 + 极化内阻）导致大电流放电时端电压迅速下降，提前达到截止电压，使得实际放出的容量低于理论值。<br><br>3. <b>非活性组分对能量密度的稀释：</b>理论比容量仅基于活性物质质量计算。实际电池包含集流体、隔膜、外壳、导电剂、粘结剂等非活性组分，显著降低了电池整体的能量密度。</p>
+                </div>
+            </section>
+            
+            <!-- 模块5：多维雷达 -->
+            <section id="sec-mod5" class="page-sec hidden">
+                <h2 class="section-title">5. 不同电池体系性能对比分析</h2>
+                <div class="glass-card grid-2">
+                    <div class="chart-box-wrapper"><div class="canvas-container" style="height:350px;"><canvas id="chart11_radar"></canvas></div></div>
+                    <div style="display:flex;flex-direction:column;justify-content:center;color:var(--text-secondary);font-size:0.92rem;line-height:1.8;">
+                        <ul style="padding-left:14px;">
+                            <li><b style="color:var(--accent);">LFP体系：</b>P-O共价键使结构稳固，热稳定性与循环寿命优异；但平台电压仅 3.2 V，能量密度受限。</li><br>
+                            <li><b style="color:#c0392b;">NCM体系：</b>能量密度高，但随着镍含量升高，热稳定性劣化，高温易释氧。</li><br>
+                            <li><b style="color:#5b7d90;">石墨负极：</b>嵌锂电位低、成本低；但低温或大倍率充电条件下易发生析锂，存在安全隐患。</li><br>
+                            <li><b style="color:#1a6b8a;">硅碳体系（SiC）：</b>合金化储锂提供超高容量，但嵌锂体积膨胀超过 300%，需要通过纳米化和复合包覆缓解。</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+               <!-- 模块6：匹配规范 -->
+            <section id="sec-mod6" class="page-sec hidden">
+                <h2 class="section-title">6. 性能匹配设计原则</h2>
+                
+                <!-- 总述 -->
+                <div class="glass-card" style="margin-bottom:16px;">
+                    <p style="font-size:var(--font-sm);color:var(--text-secondary);line-height:1.9;margin:0;">
+                        在锂离子电池的实际应用中，<strong style="color:var(--accent);">不存在一种"万能"的电池体系</strong>能够同时满足所有场景的需求。不同终端设备对能量密度、功率密度、安全性和循环寿命的权重完全不同，因此需要根据核心需求进行有针对性的材料选型与参数设计。以下结合课堂知识，对<strong>动力电池、数码电池、快充电池、储能电池和48V轻混系统</strong>五类典型场景的性能匹配逻辑进行系统总结，并归纳高能量、高功率、高安全电池的通用设计规律。
+                    </p>
+                </div>
+
+                <!-- 子导航锚点 -->
+                <div id="sub-6-1"></div>
+                <h3 class="sub-title" style="margin-top:6px;">一、五类典型应用场景的性能匹配逻辑</h3>
+                
+                <!-- 场景1：动力电池 -->
+                <div class="def-box" style="border-left-color:#c0392b;margin-bottom:14px;">
+                    <h4 style="color:#c0392b;">1. 动力电池（乘用电动汽车）</h4>
+                    <p><strong>核心需求：</strong>高能量密度（延长续航里程）与适中的功率密度（满足加速超车），同时对安全性和循环寿命有较高要求（通常需保证8年或15万公里以上）。</p>
+                    <p><strong>材料选型：</strong>正极多采用<strong>高镍三元材料（NCM811、NCA）</strong>，镍含量高（Ni≥80%），实际比容量约200~220 mAh/g，配合较高压实密度（3.4~3.6 g/cm³），电芯能量密度可达250~300 Wh/kg。负极逐渐从纯人造石墨转向<strong>硅碳复合负极（Si含量5%~15%）</strong>，利用硅高达3579 mAh/g的理论容量将负极比容量提升至450~600 mAh/g。但高镍正极热稳定性较差（约200°C即开始释氧），硅负极体积膨胀大（>300%），因此必须搭配严格的热管理系统（液冷或直冷）和电极结构设计（如预锂化、弹性粘结剂）。</p>
+                    <p><strong>参数设计：</strong>极片面密度较高（正极单面＞20 mg/cm²）以提升能量，但需控制孔隙率（约30%）平衡倍率性能；电解液添加阻燃添加剂（如磷酸酯类）或氟化溶剂；隔膜涂覆陶瓷（Al₂O₃或勃姆石）增强抗热收缩能力；电芯形态多采用方形硬壳或软包，成组时通过CTP（电芯到电池包）技术减少结构件重量。</p>
+                </div>
+
+                <!-- 场景2：数码电池 -->
+                <div class="def-box" style="border-left-color:#5b9fd4;margin-bottom:14px;">
+                    <h4 style="color:#5b9fd4;">2. 数码电池（消费电子，如手机、笔记本）</h4>
+                    <p><strong>核心需求：</strong>最重视<strong>体积能量密度（Wh/L）</strong>，因为设备内部空间极为有限。同时要求高电压平台（3.85~4.45V）以提升能量，循环寿命要求相对宽松（500~800次容量保持80%即可）。</p>
+                    <p><strong>材料选型：</strong>正极几乎统一采用<strong>高压钴酸锂（LCO）</strong>，通过将充电截止电压从传统4.2V提升至4.45V甚至4.5V，实际比容量从约145 mAh/g提高到180~190 mAh/g。钴酸锂具有极高的压实密度（4.0~4.2 g/cm³）和优异的电子电导率，是实现体积能量密度突破的关键。负极选择<strong>高压实人造石墨</strong>（压实密度1.7~1.8 g/cm³），并采用表面包覆（无定形碳）以改善与高压电解液的兼容性。</p>
+                    <p><strong>参数设计：</strong>极片采用更薄的集流体（铝箔12 μm，铜箔8 μm），卷芯结构更紧凑，封装形式多为软包或聚合物电池，形状可根据设备定制（异形电池）。电解液需耐受高电压（4.45V以上），加入氟代碳酸酯（FEC）和腈类添加剂；隔膜选用薄型（7~12 μm）高孔隙率基膜。数码电池对快充能力也有要求（手机常用1~3C充电），但能量密度仍是第一优先级，倍率性能通过降低电极厚度或添加导电剂（CNT）有限度地改善。</p>
+                </div>
+
+                <!-- 场景3：快充电池 -->
+                <div class="def-box" style="border-left-color:#e67e22;margin-bottom:14px;">
+                    <h4 style="color:#e67e22;">3. 快充电池（高倍率应用，如电动工具、无人机、超级快充汽车）</h4>
+                    <p><strong>核心需求：</strong>高功率密度（快速充放电能力），能够耐受≥3C充电、≥10C放电，同时发热可控、容量衰减慢。这与高能量密度设计存在明显矛盾——高能量密度需要厚电极、高压实密度，会显著增加锂离子扩散路径和极化内阻，恶化倍率性能。</p>
+                    <p><strong>材料选型：</strong>遵循<strong>"薄、多、低"原则</strong>——电极更薄、孔隙率更高、面密度更低。正极多选用<strong>改性锰酸锂（LMO）或低镍三元（NCM111/523）</strong>，LMO具有尖晶石结构的三维锂离子通道，倍率性能优异且成本低，但高温循环较差，需通过掺杂（Al、Mg）或包覆改善。负极首选<strong>钛酸锂（LTO）</strong>，其尖晶石结构在脱嵌锂过程中晶格几乎无变化（零应变材料），锂离子扩散系数比石墨高约一个数量级，可实现20C以上的超快充放电，且1.55V的电位平台避免了析锂风险，安全性极高。但LTO能量密度较低（理论175 mAh/g，实际约160 mAh/g），全电池电压偏低（~2.4V）。</p>
+                    <p><strong>参数设计：</strong>极片面密度通常仅为能量型电池的60%~70%；孔隙率>35%；N/P比（负极容量/正极容量）设计偏高（>1.2）以抑制析锂。对于快充型乘用车电池（如特斯拉V3超充），采用人造石墨负极改性（二次颗粒造粒、表面软碳包覆）降低阻抗；电解液中添加LiFSI盐和低粘度溶剂（如DME）；隔膜采用高孔隙率陶瓷涂覆膜。</p>
+                </div>
+
+                <!-- 场景4：储能电池 -->
+                <div class="def-box" style="border-left-color:#2e7d32;margin-bottom:14px;">
+                    <h4 style="color:#2e7d32;">4. 储能电池（电网调频/基站备电/纯电大巴）</h4>
+                    <p><strong>核心需求：</strong>以<strong>安全性</strong>和<strong>超长循环寿命</strong>为首要目标（通常要求≥6000次循环，服役15~20年），对体积/重量要求相对宽松，成本敏感度极高（LCOE，平准化度电成本）。</p>
+                    <p><strong>材料选型：</strong>正极首选<strong>磷酸铁锂（LFP）</strong>，其P-O共价键在700°C以上才会分解，几乎不释氧，针刺、过充时不易热失控；同时铁、磷资源丰富，成本低廉。负极选用<strong>人造石墨</strong>即可满足需求，但在低温或高功率调频场景下，可匹配<strong>钛酸锂（LTO）</strong>负极以利用其超长循环寿命和低温性能优势。电解液采用阻燃型（如含磷添加剂），隔膜必用高强度陶瓷涂层。</p>
+                    <p><strong>参数设计：</strong>极片不宜过厚以避免局部过热；安全冗余设计（CID、翻转阀、熔断器）不可缺少。LFP电池能量密度较低（约170~190 Wh/kg），但通过CTP技术已可提升至200 Wh/kg以上，正逐渐向乘用车领域渗透；储能电站和电动大巴仍以LFP为绝对主流。宁德时代、比亚迪等企业的大规模储能产品均基于LFP路线。</p>
+                </div>
+
+                <!-- 场景5：48V轻混 -->
+                <div class="def-box" style="border-left-color:#8b5cf6;margin-bottom:14px;">
+                    <h4 style="color:#8b5cf6;">5. 48V轻混系统电池（启停/加速助力/制动回收）</h4>
+                    <p><strong>核心需求：</strong>需要<strong>同时兼顾功率</strong>（启停、加速助力）<strong>和能量</strong>（回收制动能量），属于典型的功率-能量平衡型应用。工作温度范围宽（-30°C~75°C），要求高倍率充放电耐受能力和中等能量存储。</p>
+                    <p><strong>材料选型：</strong>往往采用<strong>LFP或NCM111正极与LTO负极</strong>的组合，利用LTO的超长循环寿命（轻松满足百万次启停）和优异低温性能。也可采用NCM523+人造石墨的折中方案，在成本和性能间取得平衡。LTO基48V电池在-30°C仍可输出可观的冷启动电流，这是石墨负极难以企及的。</p>
+                    <p><strong>参数设计：</strong>极片厚度取中间值（面密度约15~18 mg/cm²），孔隙率适中（约35%），N/P比略高（约1.15）以确保长循环稳定性。电池包直接集成于车辆底盘，对体积和重量有一定约束，但不如纯电动汽车严苛。该体系已成为奔驰、奥迪等欧洲车企48V轻混系统的标配方案。</p>
+                </div>
+
+                <!-- 场景对比可视化 -->
+                <div id="sub-6-2"></div>
+                <div class="glass-card" style="margin-bottom:16px;">
+                    <h3 class="sub-title" style="margin-top:0;">五大场景性能权重对比（归一化评分）</h3>
+                    <div class="chart-box-wrapper"><div class="canvas-container" style="height:340px;"><canvas id="chartMod6_compare"></canvas></div></div>
+                    <p style="font-size:0.72rem;color:var(--text-muted);margin-top:10px;text-align:center;">评分范围0~100，反映各场景对该指标的相对权重或该体系在该维度的相对表现水平</p>
+                </div>
+
+                <!-- 三类设计取向 -->
+                <div id="sub-6-3"></div>
+                <h3 class="sub-title">二、高能量、高功率、高安全电池的材料选型与参数设计规律</h3>
+                <p style="font-size:var(--font-sm);color:var(--text-secondary);line-height:1.8;margin-bottom:14px;">通过上述五类场景的分析，可提炼出三种设计取向的核心规律。下表系统归纳了每种取向在材料选型、参数设计和工程代价方面的关键差异：</p>
+                
+                <div class="glass-card table-wrap" style="margin-bottom:16px;">
+                    <table class="glass-table">
+                        <thead>
+                            <tr>
+                                <th style="width:12%;">设计取向</th>
+                                <th style="width:28%;">目标与原理</th>
+                                <th style="width:20%;">正极材料</th>
+                                <th style="width:20%;">负极材料</th>
+                                <th style="width:20%;">关键参数设计</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><b style="color:#c0392b;">高能量型</b></td>
+                                <td>最大化比容量与电压平台，以 Wh/kg 和 Wh/L 为核心指标</td>
+                                <td>高镍三元（NCM811/NCA）或高压钴酸锂（LCO 4.45V+）</td>
+                                <td>硅碳复合（Si-C）或高压实人造石墨</td>
+                                <td>厚电极（面密度高）、高压实密度（孔隙率25%~30%）、高涂布载量、集流体/隔膜减薄、电解液追求高电压稳定性</td>
+                            </tr>
+                            <tr>
+                                <td><b style="color:#e67e22;">高功率型</b></td>
+                                <td>最小化内阻与极化，以 W/kg 和倍率性能为核心指标</td>
+                                <td>尖晶石锰酸锂（LMO）、低镍三元（NCM111/523）</td>
+                                <td>钛酸锂（LTO）或改性人造石墨（二次造粒+软碳包覆）</td>
+                                <td>薄电极（面密度为能量型的50%~70%）、高孔隙率（40%~50%）、小粒径活性材料、高导电剂含量（CNT/石墨烯）、集流体加厚、低粘度溶剂+高电导率锂盐（LiPF₆+LiFSI）</td>
+                            </tr>
+                            <tr>
+                                <td><b style="color:#2e7d32;">高安全型</b></td>
+                                <td>以热稳定性和滥用耐受性为首要目标，杜绝热失控风险</td>
+                                <td>磷酸铁锂（LFP），P-O共价键>700°C才分解，几乎不释氧</td>
+                                <td>钛酸锂（LTO，天然无析锂）或人造石墨（需控制N/P比）</td>
+                                <td>极片不宜过厚避免局部过热、安全冗余设计（CID/翻转阀/熔断器）、阻燃电解液或固态电解质、高强度陶瓷涂覆隔膜</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 多目标权衡 -->
+                <div id="sub-6-4"></div>
+                <h3 class="sub-title">三、从性能匹配到多目标权衡的专业思考</h3>
+                <div class="def-box" style="border-left-color:var(--accent-neon);margin-bottom:14px;">
+                    <p style="line-height:1.9;margin:0;font-size:var(--font-sm);color:var(--text-secondary);">
+                        在真实的产品开发中，电池设计从来不是单纯的"高能量"或"高功率"二选一，而是一个<strong style="color:var(--accent);">多目标优化问题</strong>。例如，<strong>快充型动力电池</strong>需要在能量密度（续航）和功率密度（充电时间）之间寻找平衡点：采用NCM523正极搭配二次颗粒人造石墨负极，面密度取中间值（约18 mg/cm²），既能实现2~3C快充，又能保证200 Wh/kg以上的能量密度。另一个典型案例是<strong>48V轻混系统电池</strong>，它需要同时兼顾功率和能量，利用LTO的超长循环寿命和低温性能优势。
+                        <br><br>
+                        此外，<strong style="color:#c0392b;">安全性是所有场景不可逾越的红线</strong>——即便追求极致能量密度的高镍三元电池，也必须通过正极包覆（如Al₂O₃）、隔膜涂覆、电解液添加剂和主动热管理等多重手段将安全风险控制在可接受范围内。
+                        <br><br>
+                        <strong>总结而言，性能匹配设计原则的核心是：</strong>识别场景的主次需求，选择对应的材料体系与设计参数，并通过工程手段弥补短板。课堂学习中掌握的比容量、电压平台、离子扩散系数、热分解温度等基础参数，正是支撑这一匹配逻辑的理论基石。
+                    </p>
+                </div>
+
+                <!-- 关键参数速查表 -->
+                <div class="glass-card table-wrap" style="margin-bottom:0;">
+                    <h3 class="sub-title" style="margin-top:0;">典型场景-材料-参数速查对照</h3>
+                    <table class="glass-table">
+                        <thead>
+                            <tr>
+                                <th>应用场景</th>
+                                <th>正极推荐</th>
+                                <th>负极推荐</th>
+                                <th>典型能量密度</th>
+                                <th>典型循环寿命</th>
+                                <th>核心矛盾与工程对策</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><b>动力电池</b></td><td>NCM811/NCA</td><td>Si-C / 人造石墨</td><td>250~300 Wh/kg</td><td>1000~2000次</td><td>高能量 vs 热安全 → 液冷+陶瓷隔膜+阻燃电解液</td></tr>
+                            <tr><td><b>数码电池</b></td><td>高压LCO (4.45V+)</td><td>高压实人造石墨</td><td>600~750 Wh/L</td><td>500~800次</td><td>体积能量 vs 高电压稳定性 → FEC添加剂+薄隔膜</td></tr>
+                            <tr><td><b>快充电池</b></td><td>LMO / NCM523</td><td>LTO / 改性石墨</td><td>80~180 Wh/kg</td><td>3000~20000次</td><td>倍率 vs 能量密度 → 薄电极+高孔隙+小粒径</td></tr>
+                            <tr><td><b>储能电池</b></td><td>LFP</td><td>人造石墨 / LTO</td><td>170~200 Wh/kg</td><td>6000~15000次</td><td>长寿命+低成本 → LFP正极+CTP结构创新</td></tr>
+                            <tr><td><b>48V轻混</b></td><td>LFP / NCM111</td><td>LTO</td><td>60~100 Wh/kg</td><td>20000~50000次</td><td>功率-能量平衡 → LTO零应变+宽温域电解液</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+
+            <div style="text-align:center;padding-top:26px;color:var(--text-muted);font-size:0.75rem;">© 锂离子电池性能指标网站 · 设计者：<strong>王兴源</strong>、<strong>周午婕</strong></div>
+        </main>
+        
+        <aside class="sidebar-right" id="sidebar-right">
+            <div class="sub-nav-title" id="sub-title-text">目录导航</div>
+            <ul class="sub-nav" id="sub-nav-list"></ul>
+        </aside>
+    </div>
+
+    <!-- 性能指标理论推导模态框 -->
+    <div id="deriv-overlay" style="position: fixed; inset: 0; background: rgba(30,38,50,0.6); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px;" onclick="if(event.target===this) this.style.display='none'">
+        <div class="deriv-box" style="width: 620px; max-width: 100%; background: #e4eaf0; border-radius: var(--radius-lg); border: 1px solid var(--glass-border); box-shadow: 0 25px 60px rgba(0,0,0,0.2); overflow: hidden;">
+            <div style="padding: 16px 20px; background: rgba(220, 228, 238, 0.7); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.05);">
+                <h3 id="deriv-title" style="margin: 0; color: var(--text-primary); font-size: var(--font-md); font-weight: 600;">公式数学推导</h3>
+                <button onclick="document.getElementById('deriv-overlay').style.display='none'" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-secondary);">&times;</button>
+            </div>
+            <div id="deriv-content" style="padding: 24px 28px; line-height: 1.7; font-size: var(--font-sm); overflow-y: auto; max-height: 60vh;">
+            </div>
+        </div>
+    </div>
+
+    <!-- 仓鼠选择题模态框 -->
+    <div id="quiz-overlay" onclick="if(event.target===this) closeQuiz()">
+        <div class="quiz-box">
+            <div class="quiz-header">
+                <div class="quiz-hamster-icon">🐹</div>
+                <div class="quiz-header-text">
+                    <h3 id="quiz-title">仓鼠考考你！</h3>
+                    <p id="quiz-subtitle">点击选择正确答案</p>
+                </div>
+            </div>
+            <div class="quiz-body">
+                <div class="quiz-question-text" id="quiz-question"></div>
+                <div class="quiz-options" id="quiz-options"></div>
+            </div>
+            <div class="quiz-footer">
+                <div class="quiz-explanation" id="quiz-explanation"></div>
+                <button class="quiz-next-btn" id="quiz-next-btn" onclick="nextQuizQuestion()" style="display:none;">下一题 →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D 浮动模态框 -->
+    <div id="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="modal-title">材料晶体结构模型</h3>
+                <button class="close-btn" onclick="close3D()">&times;</button>
+            </div>
+            <div id="canvas-wrap">
+                <div id="structure-badge" class="structure-badge">加载中...</div>
+            </div>
+            <div class="modal-footer" id="modal-legend-area"></div>
+        </div>
+    </div>
+
+    <script>
+        Chart.defaults.color = '#4a5568';
+        Chart.defaults.scale.grid.color = 'rgba(0,0,0,0.05)';
+        Chart.defaults.font.family = "'Inter','Noto Sans SC',sans-serif";
+        Chart.defaults.font.size = 13;
+        
+        (function() {
+            const layer = document.getElementById('meteorsLayer');
+            if (!layer) return;
+            // 银白流星：经典 Shooting Star — 亮白头 + 长锥形渐变拖尾，全银白色
+            // 优化流星分布：减少数量避免卡顿，优化位置和动画时长
+            const isMobile = window.innerWidth <= 900;
+            const meteorCount = isMobile ? 6 : 10;  // 移动端减少流星数量
+            for (let i = 0; i < meteorCount; i++) {
+                const m = document.createElement('div');
+                m.className = 'meteor';
+                const headSize = Math.random() * 2 + 2;  // 减小流星头大小
+                const trailLen = Math.random() * 60 + 50;  // 缩短拖尾
+                // 优化流星起点分布：更均匀的覆盖屏幕顶部区域
+                const startX = Math.random() * 80 - 10;  // -10% 到 70%
+                const startY = Math.random() * 20 - 10;  // -10% 到 10%
+                m.style.cssText = `
+                    left: ${startX}%;
+                    top: ${startY}%;
+                    width: ${headSize}px;
+                    height: ${trailLen}px;
+                    border-radius: 50% 50% 50% 50% / 80% 80% 20% 20%;
+                    opacity: 0;
+                    animation-duration: ${Math.random() * 4 + 6}s;
+                    animation-delay: ${Math.random() * 15}s;
+                    background: linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.1) 30%, rgba(255,255,255,0.3) 60%, rgba(255,255,255,0.8) 85%, #fff 100%);
+                    box-shadow: 0 0 ${headSize * 2.5}px rgba(255,255,255,0.5), 0 0 ${headSize * 5}px rgba(220,230,255,0.2);
+                    clip-path: polygon(50% 0%, 85% 15%, 75% 100%, 25% 100%, 15% 15%);
+                    will-change: transform, opacity;  /* 提示浏览器优化动画 */
+                `;
+                layer.appendChild(m);
+            }
+        })();
+
+        /* ================= 星系星空粒子特效（Nebula 星云版） ================= */
+        (function() {
+            const canvas = document.getElementById('starfieldCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            let W, H;
+
+            function resize() {
+                W = canvas.width = window.innerWidth;
+                H = canvas.height = window.innerHeight;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            // 配色方案：银白、青绿、薰衣草紫、柔粉 — 无蓝色
+            const NEBULA_COLORS = [
+                { name: 'silver',  r: 225, g: 230, b: 238, hue: '银白' },
+                { name: 'cyanGreen', r: 160, g: 235, b: 210, hue: '青绿' },
+                { name: 'lavender', r: 210, g: 185, b: 240, hue: '薰衣草紫' },
+                { name: 'pink',     r: 245, g: 195, b: 210, hue: '柔粉' },
+            ];
+
+            const isMobile = window.innerWidth <= 900;
+
+            // ====== 第1层：星云（Nebula Clouds）=====
+            // 大型柔和径向渐变，慢呼吸（8-12s周期），0.0001-0.0003 旋转
+            // 移动端禁用星云以提升性能
+            const isPerformanceLimited = isMobile || navigator.hardwareConcurrency <= 2;
+            const nebulae = [];
+            const NEBULA_COUNT = isPerformanceLimited ? 0 : 6;
+            const nebulaPositions = [
+                { xF: 0.08, yF: 0.25 },  // 左上
+                { xF: 0.92, yF: 0.20 },  // 右上
+                { xF: 0.05, yF: 0.70 },  // 左下
+                { xF: 0.95, yF: 0.75 },  // 右下
+                { xF: 0.50, yF: 0.15 },  // 中上
+                { xF: 0.50, yF: 0.85 },  // 中下
+            ];
+            for (let i = 0; i < NEBULA_COUNT; i++) {
+                const pos = nebulaPositions[i];
+                const col = NEBULA_COLORS[i % NEBULA_COLORS.length];
+                nebulae.push({
+                    x: W * pos.xF,
+                    y: H * pos.yF,
+                    radius: 650 + Math.random() * 200,  // 增大星云尺寸到650-850px
+                    color: col,
+                    phase: Math.random() * Math.PI * 2,
+                    breathCycle: 8 + Math.random() * 4, // 8-12 seconds in ms
+                    breathAmount: 0.12 + Math.random() * 0.1,
+                    rotSpeed: (0.0001 + Math.random() * 0.0002) * (Math.random() > 0.5 ? 1 : -1),
+                    rotation: Math.random() * Math.PI * 2,
+                    opacity: 0.07 + Math.random() * 0.05,
+                });
+            }
+
+            // ====== 第2层：螺旋星系臂（Spiral Galaxy Arms）=====
+            // 每侧一个，共2个，慢旋转+慢呼吸（移动端禁用）
+            const galaxies = [];
+            const GALAXY_COUNT = isPerformanceLimited ? 0 : 2;
+            const galaxyPositions = [
+                { xF: 0.06, yF: 0.45 },
+                { xF: 0.92, yF: 0.50 },
+            ];
+            for (let g = 0; g < GALAXY_COUNT; g++) {
+                const pos = galaxyPositions[g];
+                const galaxy = {
+                    x: W * pos.xF,
+                    y: H * pos.yF,
+                    arms: 3,
+                    armStars: 28 + Math.floor(Math.random() * 10),
+                    rotation: Math.random() * Math.PI * 2,
+                    rotSpeed: (0.0001 + Math.random() * 0.0002) * (Math.random() > 0.5 ? 1 : -1),
+                    breathPhase: Math.random() * Math.PI * 2,
+                    breathCycle: 9 + Math.random() * 3,
+                    breathScale: 0.08 + Math.random() * 0.06,
+                    color: NEBULA_COLORS[g % NEBULA_COLORS.length],
+                    coreSize: 5 + Math.random() * 4,
+                    maxRadius: 90 + Math.random() * 40,
+                    tilt: (Math.random() - 0.5) * 0.2,
+                };
+                galaxy.armGroups = [];
+                for (let a = 0; a < galaxy.arms; a++) {
+                    const armAngle = (a / galaxy.arms) * Math.PI * 2;
+                    const stars = [];
+                    for (let s = 0; s < galaxy.armStars; s++) {
+                        const t = s / galaxy.armStars;
+                        const armSpread = (Math.random() - 0.5) * (0.4 + t * 0.6);
+                        const dist = t * galaxy.maxRadius;
+                        const theta = armAngle + t * 2.2 + armSpread;
+                        stars.push({
+                            dist: dist,
+                            theta: theta,
+                            size: Math.random() * 1.4 + 0.3,
+                            brightness: Math.random() * 0.4 + 0.4,
+                            twinkleSpeed: 0.006 + Math.random() * 0.008,
+                            twinklePhase: Math.random() * Math.PI * 2,
+                            hasCross: Math.random() > 0.8,
+                        });
+                    }
+                    galaxy.armGroups.push(stars);
+                }
+                galaxies.push(galaxy);
+            }
+
+            // ====== 第3层：背景散射星点（Background Stars）=====
+            // 移动端减少星点数量
+            const bgStars = [];
+            const BG_STAR_COUNT = isPerformanceLimited ? 20 : 60;
+            for (let i = 0; i < BG_STAR_COUNT; i++) {
+                const col = NEBULA_COLORS[Math.floor(Math.random() * NEBULA_COLORS.length)];
+                bgStars.push({
+                    x: Math.random() * W,
+                    y: Math.random() * H,
+                    size: Math.random() * 1.0 + 0.3,
+                    color: col,
+                    phase: Math.random() * Math.PI * 2,
+                    speed: 0.004 + Math.random() * 0.006, // very slow
+                    baseAlpha: Math.random() * 0.25 + 0.1,
+                    driftX: (Math.random() - 0.5) * 0.03,
+                    driftY: (Math.random() - 0.5) * 0.02,
+                });
+            }
+
+            // ====== 第4层：漂浮光尘（Floating Dust）=====
+            // 移动端禁用光尘以提升性能
+            const dust = [];
+            const DUST_COUNT = isPerformanceLimited ? 0 : 20;
+            for (let i = 0; i < DUST_COUNT; i++) {
+                const col = NEBULA_COLORS[Math.floor(Math.random() * NEBULA_COLORS.length)];
+                dust.push({
+                    x: Math.random() * W,
+                    y: Math.random() * H,
+                    size: Math.random() * 2.0 + 0.8,
+                    color: col,
+                    phase: Math.random() * Math.PI * 2,
+                    breathSpeed: 0.003 + Math.random() * 0.004,
+                    driftX: (Math.random() - 0.5) * 0.12,
+                    driftY: (Math.random() - 0.5) * 0.08 - 0.02,
+                    haloRadius: 10 + Math.random() * 10,
+                });
+            }
+
+            // ====== 绘制函数 ======
+
+            function drawNebula(t) {
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                for (const n of nebulae) {
+                    n.rotation += n.rotSpeed;
+                    const pulseCycle = t / (n.breathCycle * 1000);
+                    const pulse = Math.sin(pulseCycle * Math.PI * 2 + n.phase);
+                    const r = n.radius * (1 + n.breathAmount * pulse);
+                    const alpha = n.opacity * (0.75 + 0.25 * pulse);
+
+                    ctx.save();
+                    ctx.translate(n.x, n.y);
+                    ctx.rotate(n.rotation);
+                    ctx.translate(-n.x, -n.y);
+
+                    const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r);
+                    grad.addColorStop(0, `rgba(${n.color.r},${n.color.g},${n.color.b},${alpha})`);
+                    grad.addColorStop(0.25, `rgba(${n.color.r},${n.color.g},${n.color.b},${alpha * 0.65})`);
+                    grad.addColorStop(0.55, `rgba(${n.color.r},${n.color.g},${n.color.b},${alpha * 0.25})`);
+                    grad.addColorStop(1, `rgba(${n.color.r},${n.color.g},${n.color.b},0)`);
+
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+                ctx.restore();
+            }
+
+            function drawGalaxy(galaxy, t) {
+                ctx.save();
+                ctx.translate(galaxy.x, galaxy.y);
+                galaxy.rotation += galaxy.rotSpeed;
+                ctx.rotate(galaxy.rotation);
+                ctx.scale(1, 1 + galaxy.tilt);
+
+                const pulseCycle = t / (galaxy.breathCycle * 1000);
+                const pulse = Math.sin(pulseCycle * Math.PI * 2 + galaxy.breathPhase);
+                const scale = 1 + galaxy.breathScale * pulse;
+
+                ctx.globalCompositeOperation = 'lighter';
+
+                // 核心辉光
+                const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, galaxy.coreSize * scale * 3);
+                coreGrad.addColorStop(0, `rgba(255,255,255,${0.35 * (0.75 + 0.25 * pulse)})`);
+                coreGrad.addColorStop(0.3, `rgba(${galaxy.color.r},${galaxy.color.g},${galaxy.color.b},${0.2 * (0.75 + 0.25 * pulse)})`);
+                coreGrad.addColorStop(1, `rgba(${galaxy.color.r},${galaxy.color.g},${galaxy.color.b},0)`);
+                ctx.fillStyle = coreGrad;
+                ctx.beginPath();
+                ctx.arc(0, 0, galaxy.coreSize * 3 * scale, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 旋臂星星
+                for (const armStars of galaxy.armGroups) {
+                    for (const star of armStars) {
+                        const twinkle = Math.sin(t * star.twinkleSpeed + star.twinklePhase);
+                        const alpha = star.brightness * (0.5 + 0.5 * twinkle) * (0.75 + 0.25 * pulse);
+                        const sz = star.size * scale;
+                        const dx = Math.cos(star.theta) * star.dist * scale;
+                        const dy = Math.sin(star.theta) * star.dist * scale;
+
+                        const sg = ctx.createRadialGradient(dx, dy, 0, dx, dy, sz * 1.8);
+                        sg.addColorStop(0, `rgba(255,255,255,${Math.min(0.9, alpha)})`);
+                        sg.addColorStop(0.4, `rgba(${galaxy.color.r},${galaxy.color.g},${galaxy.color.b},${alpha * 0.6})`);
+                        sg.addColorStop(1, `rgba(${galaxy.color.r},${galaxy.color.g},${galaxy.color.b},0)`);
+                        ctx.fillStyle = sg;
+                        ctx.beginPath();
+                        ctx.arc(dx, dy, sz * 1.8, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        if (star.hasCross) {
+                            const crossLen = sz * 4 * (0.8 + 0.2 * twinkle);
+                            ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.35})`;
+                            ctx.lineWidth = 0.4;
+                            ctx.beginPath();
+                            ctx.moveTo(dx - crossLen, dy); ctx.lineTo(dx + crossLen, dy);
+                            ctx.moveTo(dx, dy - crossLen); ctx.lineTo(dx, dy + crossLen);
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                ctx.restore();
+            }
+
+            function drawBgStars(t) {
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                for (const s of bgStars) {
+                    s.x += s.driftX;
+                    s.y += s.driftY;
+                    if (s.x < -10) s.x = W + 10;
+                    if (s.x > W + 10) s.x = -10;
+                    if (s.y < -10) s.y = H + 10;
+                    if (s.y > H + 10) s.y = -10;
+
+                    const twinkle = Math.sin(t * s.speed + s.phase);
+                    const alpha = s.baseAlpha * (0.5 + 0.5 * twinkle);
+
+                    ctx.fillStyle = `rgba(${s.color.r},${s.color.g},${s.color.b},${alpha})`;
+                    ctx.shadowBlur = s.size * 2.5;
+                    ctx.shadowColor = `rgba(${s.color.r},${s.color.g},${s.color.b},${alpha * 0.5})`;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            }
+
+            function drawDust(t) {
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                for (const d of dust) {
+                    d.x += d.driftX;
+                    d.y += d.driftY;
+                    if (d.x < -25) d.x = W + 25;
+                    if (d.x > W + 25) d.x = -25;
+                    if (d.y < -25) d.y = H + 25;
+                    if (d.y > H + 25) d.y = -25;
+
+                    const pulse = Math.sin(t * d.breathSpeed + d.phase);
+                    const alpha = 0.12 * (0.5 + 0.5 * pulse);
+                    const sz = d.size * (0.8 + 0.4 * pulse);
+
+                    const dg = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.haloRadius);
+                    dg.addColorStop(0, `rgba(${d.color.r},${d.color.g},${d.color.b},${alpha})`);
+                    dg.addColorStop(0.5, `rgba(${d.color.g},${d.color.b},${d.color.r},${alpha * 0.3})`);
+                    dg.addColorStop(1, `rgba(${d.color.r},${d.color.g},${d.color.b},0)`);
+                    ctx.fillStyle = dg;
+                    ctx.beginPath();
+                    ctx.arc(d.x, d.y, d.haloRadius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = `rgba(255,255,255,${alpha * 0.7})`;
+                    ctx.beginPath();
+                    ctx.arc(d.x, d.y, sz * 0.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            // ====== 主循环 ======
+            function animate(timestamp) {
+                const t = timestamp || 0;
+                ctx.clearRect(0, 0, W, H);
+
+                drawNebula(t);
+                drawDust(t);
+                for (const g of galaxies) drawGalaxy(g, t);
+                drawBgStars(t);
+
+                requestAnimationFrame(animate);
+            }
+            requestAnimationFrame(animate);
+        })();
+
+        const rc = document.getElementById('rippleContainer');
+        let lrt = 0;
+        document.addEventListener('mousemove', e => { 
+            const n = Date.now(); if (n - lrt < 350) return;
+            lrt = n; const d = document.createElement('div');
+            d.className = 'ripple-dot'; d.style.left = e.clientX + 'px'; d.style.top = e.clientY + 'px';
+            rc.appendChild(d); setTimeout(() => d.remove(), 1700); 
+        });
+        document.addEventListener('click', e => { 
+            const b = document.createElement('div');
+            b.className = 'click-burst'; b.style.left = e.clientX + 'px'; b.style.top = e.clientY + 'px';
+            rc.appendChild(b); setTimeout(() => b.remove(), 800); 
+        });
+
+        /* ================= 小仓鼠选择题提问（可点击选择ABCD） ================= */
+        const quizQuestions = [
+            { q: '🧠 磷酸铁锂(LFP)的理论比容量是多少？', opts: ['A: 148 mAh/g', 'B: 170 mAh/g', 'C: 274 mAh/g', 'D: 372 mAh/g'], ans: 1, exp: 'LFP理论比容量为170 mAh/g，虽然不高，但P-O共价键使其热稳定性极佳！' },
+            { q: '🧠 哪种负极材料理论比容量最高？', opts: ['A: 石墨 372 mAh/g', 'B: 硅碳SiC 4200 mAh/g', 'C: 钛酸锂LTO 175 mAh/g', 'D: 铜集流体'], ans: 1, exp: '硅碳负极理论比容量高达4200 mAh/g，是石墨的11倍以上！' },
+            { q: '🧠 法拉第常量F的值约为？', opts: ['A: 96500 C/mol', 'B: 8.314 J/(mol·K)', 'C: 3.14159', 'D: 100000 C/mol'], ans: 0, exp: 'F ≈ 96500 C/mol，公式 C = nF/(3.6M) 就用到了它！' },
+            { q: '🧠 LFP电池的平均工作电压大约是多少？', opts: ['A: 3.85 V', 'B: 3.7 V', 'C: 3.2 V', 'D: 4.2 V'], ans: 2, exp: 'LFP平台电压约3.2V，胜在安全稳定、寿命超长！' },
+            { q: '🧠 SEI膜是在哪个电极表面形成的？', opts: ['A: 正极', 'B: 负极', 'C: 隔膜', 'D: 集流体'], ans: 1, exp: 'SEI膜在负极表面形成，消耗首次循环的活性锂！' },
+            { q: '🧠 哪种正极材料热稳定性最好？', opts: ['A: NCM811', 'B: LCO', 'C: LFP', 'D: LMO'], ans: 2, exp: 'LFP的P-O共价键在700°C以上才分解，几乎不释氧！' },
+            { q: '🧠 钛酸锂(LTO)负极的脱锂电位是多少？', opts: ['A: 0.1 V', 'B: 1.55 V', 'C: 3.0 V', 'D: 4.2 V'], ans: 1, exp: 'LTO脱锂电位1.55V，远高于石墨的0.1V，不会析锂！' },
+            { q: '🧠 能量密度的计算公式是什么？', opts: ['A: E = C + V', 'B: E = C × V', 'C: E = C / V', 'D: E = C - V'], ans: 1, exp: '能量密度 = 比容量 × 工作电压！' },
+            { q: '🧠 NCM811中"811"代表什么？', opts: ['A: 811个原子', 'B: Ni:Co:Mn = 8:1:1', 'C: 811Wh/kg', 'D: 811次循环'], ans: 1, exp: 'Ni:Co:Mn = 8:1:1，镍含量越高能量密度越高！' },
+            { q: '🧠 电池内阻不包括以下哪部分？', opts: ['A: 欧姆内阻', 'B: SEI膜阻抗', 'C: 电荷转移阻抗', 'D: 电解液颜色吸收'], ans: 3, exp: '内阻包括欧姆电阻、SEI膜阻抗、电荷转移阻抗和扩散阻抗~' },
+            { q: '🧠 钴酸锂(LCO)的理论比容量约为？', opts: ['A: 140 mAh/g', 'B: 274 mAh/g', 'C: 372 mAh/g', 'D: 500 mAh/g'], ans: 1, exp: 'LCO理论比容量274 mAh/g，但实际只能用一半左右！' },
+            { q: '🧠 硅碳负极嵌锂时体积膨胀约多少？', opts: ['A: 约30%', 'B: 约100%', 'C: 超过300%', 'D: 几乎没有'], ans: 2, exp: '硅负极体积膨胀超过300%，会导致电极粉化失效！' },
+            { q: '🧠 以下哪种电池最适合储能电站？', opts: ['A: 高压LCO', 'B: NCM811', 'C: 磷酸铁锂LFP', 'D: 硅碳负极'], ans: 2, exp: 'LFP成本低、寿命长、安全性高，是储能电站绝对主流！' },
+            { q: '🧠 电池电动势E与吉布斯自由能ΔG的关系是？', opts: ['A: ΔG = zFE', 'B: ΔG = -zFE', 'C: ΔG = F/E', 'D: ΔG = -F/E'], ans: 1, exp: 'ΔG = -zFE，负号表示系统对外做功！' },
+            { q: '🧠 高镍三元NCM811在约多少度开始释氧？', opts: ['A: 700°C', 'B: 500°C', 'C: 约200°C', 'D: 1000°C'], ans: 2, exp: '高镍正极约200°C即开始释氧，热稳定性较差！' },
+            { q: '🧠 石墨负极的理论比容量是？', opts: ['A: 170 mAh/g', 'B: 274 mAh/g', 'C: 372 mAh/g', 'D: 4200 mAh/g'], ans: 2, exp: '石墨理论比容量372 mAh/g，通过LiC6嵌锂结构储锂！' },
+            { q: '🧠 锰酸锂(LMO)的主要缺点是什么？', opts: ['A: 容量太低', 'B: Jahn-Teller效应导致Mn溶出', 'C: 成本太高', 'D: 电压太低'], ans: 1, exp: 'LMO在高温下会发生Jahn-Teller畸变，导致Mn溶出衰减！' },
+            { q: '🧠 快充电池的设计原则是？', opts: ['A: 厚电极+高压实', 'B: 薄电极+高孔隙+小粒径', 'C: 增加活性物质比例', 'D: 提高面密度'], ans: 1, exp: '薄电极缩短扩散路径，高孔隙率加速离子传输，小粒径缩短固相扩散！' },
+            { q: '🧠 电池的能量效率主要受什么控制？', opts: ['A: 比容量大小', 'B: 电压效率（充放电压比）', 'C: 电极颜色', 'D: 电池重量'], ans: 1, exp: '能量效率 ≈ 放电电压/充电电压，极化内阻越小效率越高！' },
+            { q: '🧠 钛酸锂(LTO)的循环寿命可达？', opts: ['A: 约500次', 'B: 约2000次', 'C: 轻松破万次', 'D: 约100次'], ans: 2, exp: 'LTO是零应变材料，循环寿命轻松破万次！' },
+            { q: '🧠 电池的自放电主要由什么引起？', opts: ['A: 外部短路', 'B: 内部副反应消耗活性锂', 'C: 温度太低', 'D: 充电太快'], ans: 1, exp: '自放电是内部副反应（如过渡金属溶解、微短路）导致容量流失！' },
+            { q: '🧠 纯电动汽车动力电池的能量密度目标是？', opts: ['A: 50~80 Wh/kg', 'B: 100~150 Wh/kg', 'C: 250~300 Wh/kg', 'D: 500 Wh/kg以上'], ans: 2, exp: '主流乘用电动汽车电池包能量密度已达250~300 Wh/kg！' },
+            { q: '🧠 首次库仑效率(ICE)低于100%的主要原因？', opts: ['A: 电极太厚', 'B: SEI膜形成消耗活性锂', 'C: 电解液太多', 'D: 集流体反应'], ans: 1, exp: '首次充电形成SEI膜消耗大量活性锂，导致ICE低于100%！' },
+            { q: '🧠 OCV-SOC曲线中哪种材料估算精度最低？', opts: ['A: NCM', 'B: LFP（中段平台区斜率极小）', 'C: LCO', 'D: LMO'], ans: 1, exp: 'LFP在SOC 20%~80%区间OCV曲线几乎平坦，电压变化极小，估算精度低！' },
+            { q: '🧠 锂离子电池中电解液的主要作用是？', opts: ['A: 储存电荷', 'B: 传导锂离子Li⁺', 'C: 提供电子导电', 'D: 固定电极结构'], ans: 1, exp: '电解液负责在正负极之间传导锂离子，电子只能通过外电路流动！' },
+            { q: '🧠 下列哪种添加剂可以形成稳定的SEI膜？', opts: ['A: 过氧化物', 'B: FEC（氟代碳酸乙烯酯）', 'C: 水', 'D: 乙醇'], ans: 1, exp: 'FEC在负极表面还原形成致密稳定的SEI膜，提高首次库仑效率！' },
+            { q: '🧠 48V轻混系统电池通常需要耐受多少次启停循环？', opts: ['A: 约1000次', 'B: 约1万次', 'C: 2万~5万次', 'D: 约500次'], ans: 2, exp: '48V轻混LTO电池寿命可达2万~5万次启停循环！' },
+            { q: '🧠 提高锂离子固相扩散系数可以？', opts: ['A: 增大活性材料粒径', 'B: 减小活性材料粒径', 'C: 增加电极厚度', 'D: 降低温度'], ans: 1, exp: '减小粒径缩短扩散路径，扩散系数越高倍率性能越好！' },
+            { q: '🧠 固态电解质的主要优势是？', opts: ['A: 离子电导率最高', 'B: 安全性高、不漏液', 'C: 成本最低', 'D: 能量密度最低'], ans: 1, exp: '固态电解质不可燃、不漏液，安全性极高，但目前界面阻抗仍是难题！' },
+            { q: '🧠 电池BMS中SOC估算的常用方法组合是？', opts: ['A: 仅看电压', 'B: 安时积分+OCV校准+EKF滤波', 'C: 仅看电流', 'D: 目测电量'], ans: 1, exp: '安时积分累积容量变化，OCV校准消除漂移，EKF滤波将误差控制在±3%以内！' },
+            { q: '🧠 以下哪个公式描述Sand方程中过渡时间τ与电流的关系？', opts: ['A: τ ∝ I', 'B: τ ∝ 1/I', 'C: τ ∝ 1/I²', 'D: τ ∝ I²'], ans: 2, exp: 'τ ∝ 1/I²，倍率越高电流越大，过渡时间越短，电极表面离子耗竭越快！' },
+            { q: '🧠 高比能电池成组时CTP技术的作用是？', opts: ['A: 增加结构件重量', 'B: 减少结构件重量，提升系统能量密度', 'C: 降低安全性', 'D: 增加内阻'], ans: 1, exp: 'CTP（Cell to Pack）减少模组和结构件重量，让LFP系统能量密度突破200 Wh/kg！' },
+            { q: '🧠 高镍三元NCM811正极中镍含量升高会带来什么变化？', opts: ['A: 能量密度降低，热稳定性提高', 'B: 能量密度提高，热稳定性劣化', 'C: 容量降低', 'D: 电压降低'], ans: 1, exp: '镍含量越高能量密度越高，但热稳定性越差，高温易释氧！' },
+            { q: '🧠 电池放电时，极化过电位导致工作电压？', opts: ['A: 高于电动势', 'B: 等于电动势', 'C: 低于电动势', 'D: 与电动势无关'], ans: 2, exp: 'U_work = E - IR - η，极化总是让工作电压低于理论电动势！' },
+            { q: '🧠 以下哪种场景最适合使用LTO负极电池？', opts: ['A: 长续航电动汽车', 'B: 手机电池', 'C: 48V轻混系统', 'D: 无人机'], ans: 2, exp: 'LTO超长寿命+宽温域，是48V轻混系统的理想选择！' },
+        ];
+
+        let quizUsedIndices = [];
+        let quizActive = false;
+        let quizScore = 0;
+        let quizTotal = 0;
+        let currentQuizAnswer = -1;
+
+        function showHamsterQuiz() {
+            if (quizActive) return;
+            const overlay = document.getElementById('quiz-overlay');
+            if (!overlay) return;
+            if (quizUsedIndices.length >= quizQuestions.length) {
+                quizUsedIndices = [];
+                quizScore = 0;
+                quizTotal = 0;
+            }
+            let idx;
+            do { idx = Math.floor(Math.random() * quizQuestions.length); } while (quizUsedIndices.includes(idx));
+            quizUsedIndices.push(idx);
+
+            const quiz = quizQuestions[idx];
+            currentQuizAnswer = quiz.ans;
+            quizActive = true;
+
+            document.getElementById('quiz-title').textContent = '🐹 仓鼠考考你！';
+            document.getElementById('quiz-subtitle').textContent = `第 ${quizTotal + 1} 题 · 点击选择正确答案`;
+            document.getElementById('quiz-question').textContent = quiz.q;
+            document.getElementById('quiz-explanation').innerHTML = '';
+            document.getElementById('quiz-next-btn').style.display = 'none';
+
+            const optContainer = document.getElementById('quiz-options');
+            optContainer.innerHTML = '';
+            quiz.opts.forEach((optText, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'quiz-opt-btn';
+                btn.textContent = optText;
+                btn.onclick = function() { selectQuizAnswer(i, this); };
+                optContainer.appendChild(btn);
+            });
+
+            overlay.classList.add('show');
+        }
+
+        function selectQuizAnswer(selectedIdx, btnEl) {
+            if (!quizActive) return;
+            quizActive = false;
+            quizTotal++;
+
+            const buttons = document.querySelectorAll('.quiz-opt-btn');
+            buttons.forEach((b, i) => {
+                b.classList.add('disabled');
+                b.onclick = null;
+                if (i === currentQuizAnswer) b.classList.add('correct');
+                if (i === selectedIdx && selectedIdx !== currentQuizAnswer) b.classList.add('wrong');
+            });
+
+            const isCorrect = selectedIdx === currentQuizAnswer;
+            if (isCorrect) quizScore++;
+
+            const quiz = quizQuestions[quizUsedIndices[quizUsedIndices.length - 1]];
+            const label = isCorrect ? '<span class="correct-label">✅ 回答正确！</span>' : '<span class="wrong-label">❌ 回答错误！</span>';
+            document.getElementById('quiz-explanation').innerHTML = `${label} ${quiz.exp}<br><em style="font-size:0.72rem;color:var(--text-muted);">得分 ${quizScore}/${quizTotal}</em>`;
+            document.getElementById('quiz-next-btn').style.display = 'block';
+            document.getElementById('quiz-next-btn').textContent = quizTotal >= quizQuestions.length ? '重新开始 🔄' : '下一题 →';
+        }
+
+        function nextQuizQuestion() {
+            document.getElementById('quiz-overlay').classList.remove('show');
+            setTimeout(() => { showHamsterQuiz(); }, 300);
+        }
+
+        function closeQuiz() {
+            document.getElementById('quiz-overlay').classList.remove('show');
+            quizActive = false;
+        }
+
+        const knowledgeMessages = [
+            'Hi~ 这里是专门驻扎在电池岛的学霸仓鼠！🐹',
+            '刚才帮你查过了，磷酸铁锂(LFP)理论比容量正是170 mAh/g！',
+            '钴酸锂(LCO)压实密度极高，导致体积能力极其强横！但是容易爆炸。',
+            '若是想要高功率能力，切记要全力消灭极化内阻和欧姆压降！',
+            '神奇的钛酸锂(LTO)在充放电中物理零应变，所以寿命轻轻松松破万次~',
+            '三元NCM811能量极其粘稠，但是高温千万不能让它释出氧气！',
+            '小心点，如果用硅负极代替石墨，膨胀率会让你怀疑人生的。',
+            '对了，笔记上记好，法拉第常量是 96500 C/mol 📐！',
+            '第一轮充电的时候永远会抽掉一部分锂分子去打造著名的 SEI 膜。',
+            '记住公式考点：能量密度其实就是比容量 × 平台的平均电压！📝',
+            '任何超大倍率抽取能量，都会招致猛烈的压降现象，这就是极化。',
+            '嗨，我刚刚更新了电芯寿命公式，跟我一起盯着它的衰减指数(SOH)！💃',
+            '如果你做出了新的参数推演，可以随时来敲我脑袋哦~ 📖'
+        ];
+        let msgIdx = 0;
+
+        function showHamsterMsg(msg) {
+            if (!hamsterSpeech) return;
+            hamsterSpeech.innerText = msg || knowledgeMessages[msgIdx % knowledgeMessages.length];
+            if (!msg) msgIdx++;
+            hamsterSpeech.classList.add('show');
+            setTimeout(() => { hamsterSpeech.classList.remove('show'); }, 4000);
+        }
+
+        function wavePaw() {
+            if (!hamsterPaw) return;
+            hamsterPaw.classList.remove('waving');
+            void hamsterPaw.offsetWidth;
+            hamsterPaw.classList.add('waving');
+        }
+
+        function hamsterDance() {
+            if (!hamsterEl) return;
+            hamsterEl.classList.remove('dancing');
+            void hamsterEl.offsetWidth;
+            hamsterEl.classList.add('dancing');
+        }
+
+        function hamsterQuickBlink() {
+            const eyes = document.querySelectorAll('.h3d-eye');
+            eyes.forEach(eye => {
+                eye.style.animation = 'none';
+                eye.style.transform = 'translate(-50%, -50%) scaleY(0.04)';
+                setTimeout(() => {
+                    eye.style.transform = 'translate(-50%, -50%) scaleY(1)';
+                    eye.style.animation = 'blinkAuto 4s infinite';
+                }, 160);
+            });
+        }
+
+        let autoActionTimer;
+        const autoActions = ['wave', 'dance', 'speak', 'blink', 'waveSpeak', 'danceSpeak'];
+
+        function triggerRandomAction() {
+            if (!hamsterContainer) return;
+            const action = autoActions[Math.floor(Math.random() * autoActions.length)];
+            switch (action) {
+                case 'wave': wavePaw(); break;
+                case 'dance': hamsterDance(); break;
+                case 'speak': showHamsterMsg(); break;
+                case 'blink': hamsterQuickBlink(); break;
+                case 'waveSpeak': wavePaw(); showHamsterMsg(); break;
+                case 'danceSpeak': hamsterDance(); showHamsterMsg(); break;
+            }
+        }
+
+        const dynamicIsland = document.getElementById('dynamicIsland');
+        if (dynamicIsland) {
+            dynamicIsland.addEventListener('mouseenter', () => { 
+                if (autoActionTimer) clearInterval(autoActionTimer);
+                autoActionTimer = setInterval(triggerRandomAction, 6000 + Math.random() * 8000);
+            });
+            dynamicIsland.addEventListener('mouseleave', () => { 
+                if (autoActionTimer) clearInterval(autoActionTimer); 
+            });
+            
+            dynamicIsland.addEventListener('click', function(e) { 
+                if (e.target.closest('.hamster-container')) return; 
+                goHome(); 
+            });
+        }
+
+        /* 第一版完整的文案与布局流转 */
+        function goHome() { 
+            document.getElementById('dashboard-view').classList.add('hidden');
+            setTimeout(() => document.getElementById('home-view').classList.remove('hidden'), 450);
+            document.getElementById('mobileBackBar').style.display = 'none'; 
+        }
+
+        function navToMod(id) { 
+            document.getElementById('home-view').classList.add('hidden'); 
+            const n = parseInt(id.replace('mod', ''));
+            setTimeout(() => { 
+                document.getElementById('dashboard-view').classList.remove('hidden');
+                switchMain(n); 
+                if (window.innerWidth <= 900) document.getElementById('mobileBackBar').style.display = 'flex'; 
+            }, 450); 
+        }
+
+        function switchMain(n) { 
+            document.querySelectorAll('.main-nav a').forEach(a => a.classList.remove('active')); 
+            const b = document.getElementById('btn-mod' + n); if (b) b.classList.add('active');
+            
+            document.querySelectorAll('.page-sec').forEach(s => s.classList.add('hidden')); 
+            const sec = document.getElementById('sec-mod' + n); if (sec) sec.classList.remove('hidden');
+            
+            document.getElementById('main-scroll').scrollTop = 0; 
+            const t = ['', '性能指标理论定义', '正负极材料参数库', '理论计算', '损失计算分析', '性能对比分析', '匹配设计原则'];
+            document.getElementById('mobileBackTitle').innerText = t[n] || ''; 
+            
+            const rb = document.getElementById('sidebar-right'), rl = document.getElementById('sub-nav-list'); 
+            if (n === 1) { 
+                document.getElementById('sub-title-text').innerText = '性能指标理论定义';
+                rl.innerHTML = '<li><a href="#m1-cap" onclick="hLight(this)">理论比容量</a></li><li><a href="#m1-emf" onclick="hLight(this)">电池电动势</a></li><li><a href="#m1-voltage" onclick="hLight(this)">工作电压</a></li><li><a href="#m1-res" onclick="hLight(this)">电池内阻</a></li><li><a href="#m1-cur" onclick="hLight(this)">电流与倍率</a></li><li><a href="#m1-energy" onclick="hLight(this)">能量密度</a></li><li><a href="#m1-power" onclick="hLight(this)">功率密度</a></li><li><a href="#m1-life" onclick="hLight(this)">容量衰减与自放电</a></li><li><a href="#m1-soc" onclick="hLight(this)">SOC与DOD</a></li><li><a href="#m1-ce" onclick="hLight(this)">库仑效率</a></li><li><a href="#m1-heat" onclick="hLight(this)">热力学可逆热</a></li><li><a href="#m1-ee" onclick="hLight(this)">能量效率</a></li>';
+                rb.style.display = 'flex';
+            } else if (n === 3) {
+                document.getElementById('sub-title-text').innerText = '理论计算架构';
+                rl.innerHTML = '<li><a href="#sub-3-1" onclick="hLight(this)">理论比容量计算</a></li><li><a href="#sub-3-2" onclick="hLight(this)">电池能量密度计算</a></li><li><a href="#sub-3-3" onclick="hLight(this)">电池功率密度计算</a></li><li><a href="#sub-3-4" onclick="hLight(this)">标称比容量估算</a></li>';
+                rb.style.display = 'flex';
+                setTimeout(() => { calcC4(); calcC5(); }, 160); 
+            } else if (n === 4) { 
+                document.getElementById('sub-title-text').innerText = '损失与老化衰减分析';
+                rl.innerHTML = '<li><a href="#sub-4-1" onclick="hLight(this)">首次不可逆消耗损失比例估算</a></li><li><a href="#sub-4-2" onclick="hLight(this)">电池循环寿命衰减预测</a></li><li><a href="#sub-4-3" onclick="hLight(this)">充放电极化过电位估算</a></li><li><a href="#sub-4-4" onclick="hLight(this)">充放电倍率性能评估</a></li><li><a href="#sub-4-5" onclick="hLight(this)">误差说明</a></li>';
+                rb.style.display = 'flex';
+                setTimeout(() => { calcC8(); calcC10(); }, 160); 
+            } else if (n === 5) { 
+                rb.style.display = 'none'; setTimeout(() => initRadar(), 160); 
+                        } else if (n === 6) { 
+                document.getElementById('sub-title-text').innerText = '性能匹配设计原则';
+                rl.innerHTML = '<li><a href="#sub-6-1" onclick="hLight(this)">五类场景匹配逻辑</a></li><li><a href="#sub-6-2" onclick="hLight(this)">场景权重对比图表</a></li><li><a href="#sub-6-3" onclick="hLight(this)">三类设计取向规律</a></li><li><a href="#sub-6-4" onclick="hLight(this)">多目标权衡思考</a></li>';
+                rb.style.display = 'flex';
+                setTimeout(() => { initMod6Chart(); }, 200);
+            } else { rb.style.display = 'none'; }
+        }
+
+        function hLight(el) { document.querySelectorAll('.sub-nav a').forEach(a => a.classList.remove('active')); el.classList.add('active'); }
+
+        /* 完全沿用第一版的计算逻辑以及图表渲染 */
+        function fillC3(n, m) { document.getElementById('c3_n').value = n; document.getElementById('c3_m').value = m; calcC3(); }
+        function calcC3() { 
+            const n = +document.getElementById('c3_n').value, m = +document.getElementById('c3_m').value; 
+            if (m > 0) document.getElementById('r3_res').innerText = ((n * 96500) / (3.6 * m)).toFixed(2); 
+        }
+        
+        var curve4Obj;
+        function fillC4(c, v, p) { document.getElementById('c4_c').value = c; document.getElementById('c4_v').value = v; document.getElementById('c4_p').value = p; calcC4(); }
+        function calcC4() { 
+            const c = +document.getElementById('c4_c').value, v = +document.getElementById('c4_v').value, p = +document.getElementById('c4_p').value;
+            document.getElementById('r4_m').innerText = (c * v).toFixed(2); document.getElementById('r4_v').innerText = (c * v * p).toFixed(2);
+            const dc = [], dd = []; 
+            for (let i = 0; i <= 40; i++) { 
+                const x = (i / 40) * c, pct = (i + 1) / 42, nernst = 0.05 * Math.log(pct / (1 - pct));
+                dc.push({ x, y: v + 0.1 + nernst }); dd.push({ x, y: v - 0.1 - nernst }); 
+            }
+            dd.reverse();
+            dd.forEach((pt, j) => pt.x = (j / 40) * c); 
+            
+            const ctx = document.getElementById('chartCurve4'); if (!ctx) return; const ctx2d = ctx.getContext('2d'); 
+            if (curve4Obj) curve4Obj.destroy();
+            curve4Obj = new Chart(ctx2d, { 
+                type: 'line', data: { datasets: [{ label: '充电曲线', data: dc, borderColor: '#5b9fd4', backgroundColor: 'rgba(91,159,212,0.06)', fill: true, pointRadius: 0, tension: 0.4, borderWidth: 1.5 }, { label: '放电曲线', data: dd, borderColor: '#c0392b', pointRadius: 0, tension: 0.4, borderWidth: 1.5 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'linear', title: { display: true, text: '比容量 (mAh/g)' } }, y: { title: { display: true, text: '电压 (V)'} } } } 
+            }); 
+        }
+
+        var chart5Obj;
+        function fillC5(p, m, v) { document.getElementById('c5_p').value = p; document.getElementById('c5_m').value = m; document.getElementById('c5_v').value = v; calcC5(); }
+        function calcC5() { 
+            const Pm = +document.getElementById('c5_p').value / +document.getElementById('c5_m').value, Pv = +document.getElementById('c5_p').value / +document.getElementById('c5_v').value;
+            document.getElementById('r5_m').innerText = Pm.toFixed(2); document.getElementById('r5_v').innerText = Pv.toFixed(2); 
+            const ctx = document.getElementById('chartPower5'); if (!ctx) return; const ctx2d = ctx.getContext('2d'); if (chart5Obj) chart5Obj.destroy();
+            chart5Obj = new Chart(ctx2d, { type: 'bar', data: { labels: ['质量功率 W/kg', '体积功率 W/L'], datasets: [{ data: [Pm, Pv], backgroundColor: ['#5b9fd4', '#4da0e8'], borderRadius: 5 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } }); 
+        }
+
+        function fillC7(c, w, e, k) { document.getElementById('c7_c').value = c; document.getElementById('c7_w').value = w; document.getElementById('c7_e').value = e; document.getElementById('c7_k').value = k; calcC7(); }
+        function calcC7() { 
+            const ans = +document.getElementById('c7_c').value * (+document.getElementById('c7_w').value / 100) * (+document.getElementById('c7_e').value / 100) * (+document.getElementById('c7_k').value / 100);
+            document.getElementById('r7_res').innerText = ans.toFixed(2); 
+        }
+
+        function fillC6(c, bet, k) { document.getElementById('c6_c').value = c; document.getElementById('c6_bet').value = bet; document.getElementById('c6_k').value = k; calcC6(); }
+        function calcC6() { const loss = (+document.getElementById('c6_bet').value * +document.getElementById('c6_k').value / +document.getElementById('c6_c').value) * 100; document.getElementById('r6_res').innerText = loss.toFixed(2); }
+
+        var chartLif;
+        function fillC8(c0, a, n) { document.getElementById('c8_c0').value = c0; document.getElementById('c8_a').value = a; document.getElementById('c8_n').value = n; calcC8(); }
+        function calcC8() { 
+            const c0 = +document.getElementById('c8_c0').value, a = +document.getElementById('c8_a').value / 100, n = +document.getElementById('c8_n').value;
+            const fin = c0 * Math.pow(1 - a, n);
+            document.getElementById('r8_c').innerText = fin.toFixed(2); document.getElementById('r8_soh').innerText = ((fin / c0) * 100).toFixed(2); 
+            const d = [], st = Math.max(1, Math.floor(n / 20)); for (let i = 0; i <= n; i += st) { d.push({ x: i, y: c0 * Math.pow(1 - a, i) }); } 
+            
+            const ctx = document.getElementById('chartCurve8'); if (!ctx) return; const ctx2d = ctx.getContext('2d'); if (chartLif) chartLif.destroy();
+            chartLif = new Chart(ctx2d, { type: 'line', data: { datasets: [{ label: '容量衰减曲线', data: d, borderColor: '#c0392b', backgroundColor: 'rgba(192,57,43,0.05)', fill: true, tension: 0.2, pointRadius: 0, borderWidth: 1.4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'linear', title: { display: true, text: '循环次数 N' } }, y: { title: { display: true, text: '剩余容量 (mAh)' } } } } }); 
+        }
+
+        function fillC9(u, i, r) { document.getElementById('c9_u').value = u; document.getElementById('c9_i').value = i; document.getElementById('c9_r').value = r; calcC9(); }
+        function calcC9() { const drop = +document.getElementById('c9_i').value * (+document.getElementById('c9_r').value / 1000); document.getElementById('r9_drop').innerText = drop.toFixed(2); document.getElementById('r9_op').innerText = (+document.getElementById('c9_u').value - drop).toFixed(2); }
+
+        var chartRat;
+        function fillC10(c, r, b) { document.getElementById('c10_c').value = c; document.getElementById('c10_rate').value = r; document.getElementById('c10_beta').value = b; calcC10(); }
+        function calcC10() { 
+            const c = +document.getElementById('c10_c').value, rate = +document.getElementById('c10_rate').value, beta = Math.abs(+document.getElementById('c10_beta').value);
+            document.getElementById('r10_c').innerText = Math.max(0, c * (1 - beta * rate)).toFixed(2); 
+            const d = []; for (let i = 0; i <= 10; i++) d.push(Math.max(0, c * (1 - beta * i))); 
+            
+            const ctx = document.getElementById('chartCurve10'); if (!ctx) return; const ctx2d = ctx.getContext('2d'); if (chartRat) chartRat.destroy();
+            chartRat = new Chart(ctx2d, { type: 'bar', data: { labels: ['0C', '1C', '2C', '3C', '4C', '5C', '6C', '7C', '8C', '9C', '10C'], datasets: [{ data: d, backgroundColor: '#5b9fd4', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: '容量 (mAh)' } } } } }); 
+        }
+
+        function initRadar() { 
+            const ctx = document.getElementById('chart11_radar'); if (!ctx) return; const ctx2d = ctx.getContext('2d'); if (window.radarObj) window.radarObj.destroy();
+            window.radarObj = new Chart(ctx2d, { type: 'radar', data: { labels: ['能量密度', '倍率性能', '热安全性', '循环寿命', '成本'], datasets: [{ label: 'LFP', data: [55, 60, 100, 95, 90], borderColor: '#5b9fd4', backgroundColor: 'rgba(91,159,212,0.05)', borderWidth: 1.5 }, { label: 'NCM', data: [95, 75, 40, 55, 45], borderColor: '#c0392b', backgroundColor: 'rgba(192,57,43,0.04)', borderWidth: 1.5 }, { label: '石墨', data: [65, 50, 80, 85, 95], borderColor: '#5b7d90', borderDash: [5, 5], borderWidth: 1.3 }, { label: '硅碳 Si-C', data: [100, 85, 30, 45, 40], borderColor: '#1a6b8a', borderDash: [2, 2], borderWidth: 1.3 }] }, options: { responsive: true, maintainAspectRatio: false } }); 
+        }
+
+        var scene, camera, renderer, controls, isSpinning = true, currentGroup;
+        function init3D() { 
+            const box = document.getElementById('canvas-wrap'); if (!box) return;
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(40, box.clientWidth / Math.max(box.clientHeight, 1), 0.1, 100);
+            camera.position.set(22, 16, 26);
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(box.clientWidth, box.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            box.appendChild(renderer.domElement);
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; controls.autoRotate = true; controls.autoRotateSpeed = 1.0;
+            scene.add(new THREE.AmbientLight(0xffffff, 0.95));
+            const dl = new THREE.DirectionalLight(0xffffff, 0.65); dl.position.set(15, 30, 15); scene.add(dl);
+            (function lp() { requestAnimationFrame(lp); if (controls) controls.update(); if (renderer && scene && camera) renderer.render(scene, camera); })(); 
+        }
+
+        function toggleSpin() { isSpinning = !isSpinning; if (controls) controls.autoRotate = isSpinning; const btn = document.getElementById('spin-btn'); if (btn) btn.innerText = isSpinning ? '自动旋转: 开' : '轨道阻尼: 停'; }
+
+        function open3D(title, type, tag) { 
+            document.getElementById('modal-title').innerText = title + ' · 三维晶体结构';
+            document.getElementById('structure-badge').innerText = tag; const dot = '●'; let leg = ''; 
+            if (type === 'layered_lco') leg = '<span style="color:#5b9fd4">' + dot + ' 钴原子 Co</span> <span style="color:#c0392b;margin-left:8px">' + dot + ' 氧原子 O</span> <span style="color:#2e7d32;margin-left:8px">' + dot + ' 锂离子 Li⁺</span>';
+            else if (type === 'layered_ncm') leg = '<span style="color:#5b9fd4">' + dot + ' Ni/Co/Mn</span> <span style="color:#c0392b;margin-left:8px">' + dot + ' O</span> <span style="color:#2e7d32;margin-left:8px">' + dot + ' Li⁺</span>';
+            else if (type === 'olivine') leg = '<span style="color:#c0392b">' + dot + ' Fe</span> <span style="color:#a855f7;margin-left:8px">' + dot + ' P</span> <span style="color:#c0392b;margin-left:8px">' + dot + ' O</span> <span style="color:#2e7d32;margin-left:8px">' + dot + ' Li⁺（一维通道）</span>';
+            else if (type === 'graphite') leg = '<span style="color:#5b7d90">' + dot + ' 碳层 C</span> <span style="color:#2e7d32;margin-left:8px">' + dot + ' 层间 Li⁺</span>';
+            else if (type === 'spinel') leg = '<span style="color:#5b9fd4">' + dot + ' Mn/Ti</span> <span style="color:#c0392b;margin-left:8px">' + dot + ' O</span> <span style="color:#2e7d32;margin-left:8px">' + dot + ' Li⁺（三维通道）</span>';
+            else if (type === 'silicon') leg = '<span style="color:#5b7d90">' + dot + ' Si</span> <span style="color:#2e7d32;margin-left:8px">' + dot + ' 合金态 Li</span>';
+            
+            document.getElementById('modal-legend-area').innerHTML = '<div style="font-weight:600;font-size:0.8rem;">' + leg + '</div><button class="btn btn-outline" id="spin-btn" onclick="toggleSpin()">自动旋转: 开</button>';
+            document.getElementById('modal-overlay').style.display = 'flex'; if (!scene) init3D(); if (currentGroup && scene) scene.remove(currentGroup);
+            currentGroup = new THREE.Group(); 
+            const mb = new THREE.MeshPhysicalMaterial({ color: 0x5b9fd4, roughness: 0.15, metalness: 0.1 }),
+                mr = new THREE.MeshPhysicalMaterial({ color: 0xc0392b, roughness: 0.2, metalness: 0.1 }),
+                mg = new THREE.MeshPhysicalMaterial({ color: 0x2e7d32, roughness: 0.1, metalness: 0.05, emissive: 0x0a2210 }),
+                mgy = new THREE.MeshPhysicalMaterial({ color: 0x6b7d8a, roughness: 0.3, metalness: 0.2 }),
+                mbw = new THREE.MeshPhysicalMaterial({ color: 0xd48850, roughness: 0.2, metalness: 0.1 }),
+                mp = new THREE.MeshPhysicalMaterial({ color: 0x8b5cf6, roughness: 0.2, metalness: 0.08 }),
+                gb = new THREE.SphereGeometry(1.2, 32, 32), gs = new THREE.SphereGeometry(0.85, 32, 32);
+            
+            if (type === 'layered_lco' || type === 'layered_ncm') { dr(-3, mb, gb); dr(-1.5, mr, gs); dr(0.5, mg, gb); dr(2.5, mr, gs); dr(4, mb, gb); } 
+            else if (type === 'olivine') { for (let y = -3; y <= 3; y += 1.5) { const li = new THREE.Mesh(gb, mg); li.position.set(0, y * 1.5, 0); currentGroup.add(li); } for (let yy = -3; yy <= 3; yy += 1.5) { for (let a = 0; a < 6.28; a += 1.256) { const isFe = Math.abs(yy) % 3 === 0, rr = isFe ? 3.5 : 4.5, m1 = new THREE.Mesh(gb, isFe ? mbw : mp); m1.position.set(rr * Math.cos(a), yy * 1.5, rr * Math.sin(a)); currentGroup.add(m1); const o2 = new THREE.Mesh(gs, mr); o2.position.set(rr * 1.1 * Math.cos(a + 0.3), yy * 1.5 + 0.5, rr * 1.1 * Math.sin(a + 0.3)); currentGroup.add(o2); } } } 
+            else if (type === 'graphite') { dh(-3, mgy, gb); dr(0, mg, gs); dh(3, mgy, gb); } 
+            else if (type === 'spinel') { for (let x = -1.5; x <= 1.5; x += 1.5) for (let yz = -1.5; yz <= 1.5; yz += 1.5) for (let z = -1.5; z <= 1.5; z += 1.5) { const ck = Math.abs(x) + Math.abs(yz) + Math.abs(z); const mesh = new THREE.Mesh((ck === 0 || ck === 4.5) ? gb : gs, (ck === 0 || ck === 4.5) ? mb : (ck === 1.5 ? mr : mg)); mesh.position.set(x * 2.5, yz * 2.5, z * 2.5); currentGroup.add(mesh); } } 
+            else if (type === 'silicon') { for (let i = 0; i < 28; i++) { const sm = new THREE.Mesh(i % 4 === 0 ? gb : gs, i % 4 === 0 ? mg : mgy); sm.position.set((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12); currentGroup.add(sm); } }
+            
+            if (scene) scene.add(currentGroup);
+            setTimeout(() => { const box2 = document.getElementById('canvas-wrap'); if (!box2 || !renderer) return; renderer.setSize(box2.clientWidth, box2.clientHeight); camera.aspect = box2.clientWidth / Math.max(box2.clientHeight, 1); camera.updateProjectionMatrix(); }, 60);
+
+            function dr(y, mat, geo) { for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) { const m = new THREE.Mesh(geo, mat); m.position.set(i * 3, y, j * 3 + (i % 2 ? 1.5 : 0)); currentGroup.add(m); } }
+            function dh(y, mat, geo) { for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) { if ((i + j) % 3 === 0) continue; const m = new THREE.Mesh(geo, mat); m.position.set(i * 3, y, j * 3 + (i % 2 ? 1.5 : 0)); currentGroup.add(m); } } 
+        }
+
+        function close3D() { document.getElementById('modal-overlay').style.display = 'none'; }
+        document.getElementById('modal-overlay').addEventListener('click', function(e) { if (e.target === document.getElementById('modal-overlay')) close3D(); });
+        
+        window.addEventListener('load', function() { 
+            calcC3(); calcC7(); calcC6(); calcC9(); initRadar(); 
+            if (window.innerWidth <= 900) document.getElementById('mobileBackBar').style.display = 'none'; 
+        });
+        window.addEventListener('resize', function() { 
+            if (window.innerWidth > 900) document.getElementById('mobileBackBar').style.display = 'none'; 
+        });
+        /* ================= 模块6：场景对比图表 ================= */
+        var chartMod6;
+        function initMod6Chart() {
+            const ctx = document.getElementById('chartMod6_compare');
+            if (!ctx) return;
+            const ctx2d = ctx.getContext('2d');
+            if (chartMod6) chartMod6.destroy();
+            chartMod6 = new Chart(ctx2d, {
+                type: 'bar',
+                data: {
+                    labels: ['动力电池', '数码电池', '快充电池', '储能电池', '48V轻混'],
+                    datasets: [
+                        { label: '能量密度权重', data: [95, 90, 35, 55, 40], backgroundColor: 'rgba(192,57,43,0.65)', borderRadius: 6 },
+                        { label: '功率密度权重', data: [55, 40, 98, 30, 80], backgroundColor: 'rgba(230,126,34,0.65)', borderRadius: 6 },
+                        { label: '安全性权重',   data: [60, 45, 50, 100, 65], backgroundColor: 'rgba(46,125,50,0.65)', borderRadius: 6 },
+                        { label: '循环寿命权重', data: [55, 30, 65, 95, 85], backgroundColor: 'rgba(91,159,212,0.65)', borderRadius: 6 },
+                        { label: '成本敏感度',   data: [65, 75, 55, 95, 70], backgroundColor: 'rgba(139,92,246,0.55)', borderRadius: 6 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16, font: { size: 11 } } }
+                    },
+                    scales: {
+                        y: { min: 0, max: 100, title: { display: true, text: '归一化评分 (0~100)' }, ticks: { stepSize: 20 } }
+                    }
+                }
+            });
+        }
+
+        /* ================= 仓鼠升级：更多互动 ================= */
+        
+        // 扩展知识库（保留原有消息，新增以下）
+        const extraKnowledge = [
+            '动力电池选高镍NCM811，但200°C就会释氧，必须液冷伺候！🧊',
+            '数码电池追求体积能量密度，所以LCO压实到4.2 g/cm³！',
+            'LTO是零应变材料，循环寿命轻松破万次，但电压低是硬伤~',
+            '硅负极理论容量3579 mAh/g，但膨胀300%，工程师哭了😭',
+            '快充的要诀：电极薄、孔隙多、粒径小，记住"薄多低"三字经！',
+            '磷酸铁锂P-O键在700°C才断，所以针刺不起火，安全性YYDS！',
+            '48V轻混用LTO负极，-30°C照样启动，石墨可做不到哦~',
+            'CTP技术让LFP系统能量密度突破200 Wh/kg，刀片电池了解一下！',
+            '高压LCO充到4.5V容量飙到190 mAh/g，但电解液要加FEC！',
+            '设计电池就像做菜，高能量和高功率总是此消彼长，要会权衡⚖️',
+            'N/P比大于1.2才能抑制析锂，快充电池尤其要注意！📐',
+            '首次化成永远要消耗锂去造SEI膜，这就是不可逆损失的由来~',
+            '嘿！别忘了模块6讲了五种场景，每种的配方都完全不同！📋',
+            '尖晶石LMO的三维锂通道让倍率性能飞起，但Jahn-Teller效应导致Mn溶出…',
+            '固态电解质是终极安全方案，但目前界面阻抗还是个大难题🔬'
+        ];
+        
+        // 合并知识库
+        const allKnowledge = knowledgeMessages.concat(extraKnowledge);
+        let allMsgIdx = 0;
+        
+        // 重写showHamsterMsg以使用扩展知识库
+        showHamsterMsg = function(msg) {
+            if (!hamsterSpeech) return;
+            const pool = allKnowledge;
+            hamsterSpeech.innerText = msg || pool[allMsgIdx % pool.length];
+            if (!msg) allMsgIdx++;
+            hamsterSpeech.classList.add('show');
+            // 清除之前的定时器
+            if (hamsterSpeech._hideTimer) clearTimeout(hamsterSpeech._hideTimer);
+            hamsterSpeech._hideTimer = setTimeout(() => { hamsterSpeech.classList.remove('show'); }, 5000);
+        };
+
+        // 新增：仓鼠弹跳动画 (CSS注入)
+        (function injectJumpStyle() {
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes hamsterBounce {
+                    0%, 100% { transform: translateY(0) scale(1); }
+                    30% { transform: translateY(-22px) scale(1.08); }
+                    50% { transform: translateY(-8px) scale(1.02); }
+                    70% { transform: translateY(-18px) scale(1.05); }
+                    85% { transform: translateY(-4px) scale(0.98); }
+                }
+                @keyframes hamsterPopIn {
+                    0% { opacity: 0; transform: translateY(18px) scale(0.6); }
+                    60% { opacity: 1; transform: translateY(-6px) scale(1.06); }
+                    100% { opacity: 1; transform: translateY(0) scale(1); }
+                }
+                @keyframes bodySpinDance {
+                    0%, 100% { transform: translateX(-50%) rotate(0deg) translateY(0); }
+                    25% { transform: translateX(-50%) rotate(-8deg) translateY(-4px); }
+                    50% { transform: translateX(-50%) rotate(0deg) translateY(-6px); }
+                    75% { transform: translateX(-50%) rotate(8deg) translateY(-4px); }
+                }
+                .hamster-container.popup {
+                    opacity: 1 !important;
+                    transform: translateY(0) scale(1) !important;
+                    pointer-events: auto !important;
+                    animation: hamsterPopIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+                }
+                .hamster-container.bouncing {
+                    animation: hamsterBounce 0.8s ease-in-out !important;
+                }
+                .spinning-dance {
+                    animation: bodySpinDance 0.75s ease-in-out !important;
+                }
+            `;
+            document.head.appendChild(style);
+        })();
+
+        // 升级：点击仓鼠有更多反馈
+        if (hamsterContainer) {
+            hamsterContainer.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const rand = Math.random();
+                if (rand < 0.3) {
+                    // 30%概率触发选择题
+                    showHamsterQuiz();
+                } else if (rand < 0.5) {
+                    // 20%概率触发知识讲解
+                    showHamsterMsg();
+                } else {
+                    // 50%概率常规互动
+                    showHamsterMsg();
+                }
+                wavePaw();
+                hamsterQuickBlink();
+                if(Math.random() > 0.5) hamsterDance();
+            });
+        }
+
+        // 升级：悬浮时自动动作更丰富
+        if (dynamicIsland) {
+            dynamicIsland.addEventListener('mouseenter', () => { 
+                if (autoActionTimer) clearInterval(autoActionTimer);
+                // 首次悬浮立即打招呼
+                showHamsterMsg();
+                wavePaw();
+                hamsterQuickBlink();
+                // 更频繁的自动动作
+                autoActionTimer = setInterval(triggerRandomAction, 4500 + Math.random() * 6000);
+            });
+            dynamicIsland.addEventListener('mouseleave', () => { 
+                if (autoActionTimer) clearInterval(autoActionTimer); 
+            });
+        }
+
+        // 新增：全局自发出场（每45~90秒，仓鼠从灵动岛跳出教一个知识点）
+        var spontaneousTimer;
+        function spontaneousPopup() {
+            if (!hamsterContainer || !hamsterSpeech) return;
+            // 如果用户正在悬浮则不打扰（由悬浮定时器接管）
+            if (dynamicIsland && dynamicIsland.matches(':hover')) return;
+            
+            hamsterContainer.classList.add('popup');
+            showHamsterMsg();
+            wavePaw();
+            hamsterQuickBlink();
+            if (Math.random() > 0.5) hamsterDance();
+            
+            // 5秒后自动隐藏
+            setTimeout(() => {
+                hamsterContainer.classList.remove('popup');
+                hamsterSpeech.classList.remove('show');
+            }, 5500);
+            
+            // 设置下一次自发出场
+            scheduleNextPopup();
+        }
+        
+        function scheduleNextPopup() {
+            if (spontaneousTimer) clearTimeout(spontaneousTimer);
+            spontaneousTimer = setTimeout(spontaneousPopup, 45000 + Math.random() * 45000);
+        }
+        
+        // 页面加载后30秒开始第一次自发出场
+        window.addEventListener('load', function() {
+            if (spontaneousTimer) clearTimeout(spontaneousTimer);
+            spontaneousTimer = setTimeout(spontaneousPopup, 30000);
+        });
+        
+        // 升级triggerRandomAction，使用扩展知识库
+        triggerRandomAction = function() {
+            if (!hamsterContainer) return;
+            const action = autoActions[Math.floor(Math.random() * autoActions.length)];
+            switch (action) {
+                case 'wave': wavePaw(); break;
+                case 'dance': hamsterDance(); break;
+                case 'speak': showHamsterMsg(); break;
+                case 'blink': hamsterQuickBlink(); break;
+                case 'waveSpeak': wavePaw(); showHamsterMsg(); break;
+                case 'danceSpeak': 
+                    hamsterDance(); 
+                    showHamsterMsg(); 
+                    // 偶尔加上弹跳
+                    if (Math.random() > 0.7) {
+                        hamsterContainer.classList.add('bouncing');
+                        setTimeout(() => hamsterContainer.classList.remove('bouncing'), 850);
+                    }
+                    break;
+            }
+        };
+
+                /* ================= 模块1：学术理论数学推导核心 ================= */
+    const derivData = {
+    'cap': {
+        t: '理论比容量 (Theoretical Specific Capacity)',
+        c: '依据<strong>法拉第定律（Faraday\'s Law of Electrolysis）</strong>，在电极界面上发生电化学变化的活性物质的量与通入的电荷量成正比。其基本方程式为：<br><br>$$ \\color{#c0392b}{Q = n \\cdot z \\cdot F} $$<br>其中，\\( \\color{#5b9fd4}{Q} \\) 为电荷量（库仑，C）；\\( \\color{#5b9fd4}{n} \\) 为参与反应的活性物质的物质的量（mol）；\\( \\color{#5b9fd4}{z} \\) 为每摩尔反应单元转移的电子数；法拉第常数 \\( \\color{#5b9fd4}{F \\approx 96500 \\text{ C/mol}} \\)。<br><br>根据物质的量定义，参与反应物质的量 \\( \\color{#5b9fd4}{n} \\) 与其质量 \\( \\color{#5b9fd4}{m} \\)（g）及摩尔质量 \\( \\color{#5b9fd4}{M} \\)（g/mol）的关系为：<br><br>$$ \\color{#c0392b}{n = \\frac{m}{M}} $$<br>代入法拉第定律，单位质量（\\( \\color{#5b9fd4}{m = 1 \\text{ g}} \\)）活性物质对应的电荷量为 \\( \\color{#5b9fd4}{zF/M} \\)（C/g）。<br><br><strong>推导路径一（保留 \\(F\\) 符号的参数表达式，单位：mAh/g）：</strong><br>由毫安时与库仑的换算关系 \\( \\color{#5b9fd4}{1 \\text{ mAh} = 3.6 \\text{ C}} \\)，将 C/g 转换为 mAh/g，得：<br><br>$$ \\color{#c0392b}{C_{theory} = \\frac{z \\cdot F}{3.6 \\cdot M}} \\quad (\\text{mAh/g}) $$<br>此式为保留法拉第常数符号的参数化表达，适用于推导与教学场合。<br><br><strong>推导路径二（代入 \\(F\\) 数值的简化计算式，单位：Ah/g）：</strong><br>由安时与库仑的换算关系 \\( \\color{#5b9fd4}{1 \\text{ Ah} = 3600 \\text{ C}} \\)，代入 \\( \\color{#5b9fd4}{F \\approx 96500 \\text{ C/mol}} \\)，得：<br><br>$$ \\color{#c0392b}{C_{theory} = \\frac{z \\cdot 96500}{3600 \\cdot M} \\approx \\frac{26.8 \\cdot z}{M}} \\quad (\\text{Ah/g}) $$<br>若需以 mAh/g 表示，将上式乘以 1000 即得 \\( \\color{#5b9fd4}{C_{theory} \\approx 26800 \\cdot z / M \\ \\text{mAh/g}} \\)。两式因所采用容量单位不同而数值相差 1000 倍，本质等价。<br><br><strong>讨论：</strong>由推导结果可知，在给定电极反应（即 \\(z\\) 固定）的条件下，理论比容量与活性物质的摩尔质量 \\(M\\) 呈反比关系。在保持晶格结构可逆嵌脱的前提下，选用摩尔质量较小的主体元素可获得较高的理论比容量。'
+    },
+    'emf': {
+        t: '电池电动势 (Electromotive Force)',
+        c: '依据<strong>化学热力学</strong>，在恒温恒压可逆条件下，体系摩尔吉布斯自由能的变化 \\( \\color{#5b9fd4}{\\Delta_r G_m} \\) 等于系统对外所做的最大非体积功（即电功）：<br><br>$$ \\color{#c0392b}{\\Delta_r G_{m} = -W_{max} = -z \\cdot F \\cdot E} $$<br>由此导出电池的可逆电动势 \\( \\color{#5b9fd4}{E} \\) 为：<br><br>$$ \\color{#c0392b}{E = -\\frac{\\Delta_r G_{m}}{z \\cdot F}} $$<br><br>当反应物系偏离标准态（活度 \\(a_i \\neq 1\\)）时，由化学热力学等温方程 \\( \\color{#5b9fd4}{\\Delta_r G_m = \\Delta_r G_m^\\ominus + RT \\ln J_r} \\) 联立，得能斯特方程（Nernst Equation）：<br><br>$$ \\color{#c0392b}{E = E^\\ominus - \\frac{R \\cdot T}{z \\cdot F} \\ln J_r} $$<br>其中，\\( \\color{#5b9fd4}{E^\\ominus} \\) 为标准电动势，\\( \\color{#5b9fd4}{R} \\) 为理想气体常数（8.314 J/(mol·K)），\\( \\color{#5b9fd4}{T} \\) 为热力学温度（K），\\( \\color{#5b9fd4}{J_r} \\) 为反应活度商。<br><br><strong>讨论：</strong>在可逆条件下，电池电动势由电极反应的本征热力学参数（\\(\\Delta_r G_m\\) 与 \\(z\\)）决定，与电池的几何尺寸和活性物质总量无关。在放电过程中，随反应物活度降低、产物活度升高，\\(J_r\\) 增大，电动势逐渐下降。'
+    },
+    'voltage': {
+        t: '工作电压 (Operating Voltage)',
+        c: '当电池处于负载状态（存在净电流 \\( \\color{#5b9fd4}{I > 0} \\)）时，各类极化导致实际端电压低于可逆电动势：<br><br>$$ \\color{#c0392b}{U_{work} = E - I \\cdot R_{\\Omega} - \\eta_{act} - \\eta_{conc}} $$<br>式中，\\( \\color{#5b9fd4}{R_{\\Omega}} \\) 为欧姆电阻，涵盖集流体、电极固相及电解液相的电子/离子传导压降；\\( \\color{#5b9fd4}{\\eta_{act}} \\) 为活化过电位，源于电极/电解质界面电荷转移步骤的动力学能垒（遵循 Butler-Volmer 方程）；\\( \\color{#5b9fd4}{\\eta_{conc}} \\) 为浓差过电位，源于活性物质在体相与电极表面之间的传质扩散速率不足。<br><br>一次完整放电过程中，<strong>平均工作电压 \\( \\color{#5b9fd4}{\\overline{U}} \\)</strong> 定义为放电总能量与总放电容量的比值：<br><br>$$ \\color{#c0392b}{\\overline{U} = \\frac{\\int_{0}^{t} U(t) I(t) \\mathrm{d}t}{\\int_{0}^{t} I(t) \\mathrm{d}t}} $$<br><strong>讨论：</strong>工作电压低于电动势的幅度取决于上述三类极化之和。减小电极厚度可缩短离子扩散路径以降低 \\(\\eta_{conc}\\)；提高电解液离子电导率可降低 \\(R_{\\Omega}\\) 中的液相欧姆贡献；优化电极/电解质界面可降低 \\(\\eta_{act}\\)。这些措施有助于提高放电电压平台。'
+    },
+    'res': {
+        t: '电池内阻 (Internal Resistance)',
+        c: '电池的内阻随频率变化，表现为复阻抗。通过电化学阻抗谱技术（EIS），可建立等效电路模型（ECM）对各物理过程进行解析：<br>$$ \\color{#c0392b}{Z(\\omega) = R_s + \\frac{R_{SEI}}{1 + j\\omega R_{SEI} C_{SEI}} + \\frac{R_{ct}}{1 + j\\omega R_{ct} C_{dl}} + Z_W} $$<br>在此公式中，\\( \\color{#5b9fd4}{R_s} \\) 为欧姆电阻，包括集流体、电极固相及电解液的电子/离子传导电阻（高频区与实轴交点）；\\( \\color{#5b9fd4}{R_{SEI}} \\) 为 SEI 膜中离子迁移电阻（高频至中频区第一个半圆弧）；\\( \\color{#5b9fd4}{R_{ct}} \\) 为电荷转移步骤的法拉第阻抗（中频区第二个半圆弧）；\\( \\color{#5b9fd4}{Z_W} \\) 为 Warburg 扩散阻抗，源于固相颗粒内或液相中的半无限扩散过程（低频区斜线）。<br><br>在直流稳态简化分析中，取各电阻分量实部加和作为直流等效内阻 \\( \\color{#5b9fd4}{R_{internal}} \\)：<br>$$ \\color{#c0392b}{R_{internal} = R_s + R_{SEI} + R_{ct} + R_{diff}} $$<br><strong>讨论：</strong>电池内阻由多个串联的物理化学过程共同构成。降低 \\(R_s\\) 需改善集流体与电极的电子传导及电解液的离子电导；降低 \\(R_{SEI}\\) 需优化 SEI 膜的组成与厚度；降低 \\(R_{ct}\\) 需改善电极/电解质界面的去溶剂化与电荷转移动力学；降低 \\(R_{diff}\\) 需缩短固态扩散路径或提高扩散系数。'
+    },
+    'cur': {
+        t: '电流与工作倍率 (Current & C-Rate)',
+        c: '电流定义为单位时间内通过导体截面的电荷量：<br>$$ \\color{#c0392b}{I = \\frac{\\mathrm{d}Q}{\\mathrm{d}t}} $$<br>为消除电池尺寸与容量差异的影响，采用倍率（C-Rate）作为归一化度量。倍率定义为充放电电流 \\( \\color{#5b9fd4}{I} \\) 与标称容量 \\( \\color{#5b9fd4}{C_{nominal}} \\) 的比值：<br>$$ \\color{#c0392b}{I = \\text{Rate} \\times C_{nominal}} $$<br>在大电流条件下，由半无限扩散模型推导得到的 Sand 方程，给出电极表面活性离子浓度降至零所需的过渡时间 \\( \\color{#5b9fd4}{\\tau} \\)：<br>$$ \\color{#c0392b}{\\tau = \\frac{\\pi \\cdot D \\cdot (C_0 \\cdot z \\cdot F \\cdot A)^2}{4 \\cdot I^2}} $$<br>式中 \\( \\color{#5b9fd4}{\\tau} \\) 为过渡时间；\\( \\color{#5b9fd4}{D} \\) 为活性离子的扩散系数；\\( \\color{#5b9fd4}{C_0} \\) 为电解液体相中活性离子的初始浓度；\\( \\color{#5b9fd4}{A} \\) 为电极几何面积。<br><br><strong>讨论：</strong>由 Sand 方程可知，过渡时间 \\(\\tau\\) 与电流平方成反比。倍率越高（电流越大），\\(\\tau\\) 越短，电极表面离子耗竭越早发生，体相深部活性物质的利用率越低。提高扩散系数或增大电极面积可延长 \\(\\tau\\)，改善倍率性能。'
+    },
+    'energy': {
+        t: '能量密度 (Energy Density)',
+        c: '电池在放电过程中对外输出的总电能 \\( \\color{#5b9fd4}{W} \\) 为端电压与电流乘积对时间的积分：<br>$$ \\color{#c0392b}{W = \\int_{0}^{t_{\\text{end}}} U(t) I(t) \\mathrm{d}t} $$<br>在恒流放电条件下，引入平均工作电压 \\( \\color{#5b9fd4}{\\overline{U}} \\) 和实际放电容量 \\( \\color{#5b9fd4}{C_{\\text{actual}}} \\)，可简化为：<br>$$ \\color{#c0392b}{W \\approx \\overline{U} \\cdot \\int_{0}^{t_{\\text{end}}} I \\mathrm{d}t = \\overline{U} \\cdot C_{\\text{actual}}} $$<br>质量能量密度 \\( \\color{#5b9fd4}{E_m} \\)（Specific Energy，Wh/kg）定义为总能量与电池总质量 \\( \\color{#5b9fd4}{m_{\\text{total}}} \\)（含活性材料及所有非活性组分）的比值：<br>$$ \\color{#c0392b}{E_m = \\frac{W}{m_{\\text{total}}} = \\frac{C_{\\text{actual}}}{m_{\\text{total}}} \\cdot \\overline{U}} \\quad (\\text{Wh/kg}) $$<br><strong>讨论：</strong>质量能量密度取决于两个因素：单位质量的放电容量和平均工作电压。前者受活性材料理论比容量、电极配方中活性物质占比及实际利用率制约；后者由正负极材料的嵌脱锂电位差及极化程度决定。锂离子电池因采用低电位负极和高电位正极，工作电压高于传统水系电池，因此在相近比容量条件下具有更高的能量密度。'
+    },
+    'power': {
+        t: '功率密度 (Power Density)',
+        c: '电池在任意时刻的输出功率 \\( \\color{#5b9fd4}{P_{\\text{out}}} \\) 定义为端电压与电流的乘积：<br>$$ \\color{#c0392b}{P_{\\text{out}} = U \\cdot I} $$<br>在直流简化模型中，电池可等效为电动势 \\( \\color{#5b9fd4}{E} \\) 与内阻 \\( \\color{#5b9fd4}{R_{\\text{int}}} \\) 的串联电路，端电压为 \\( \\color{#5b9fd4}{U = E - I \\cdot R_{\\text{int}}} \\)，代入得：<br>$$ \\color{#c0392b}{P_{\\text{out}} = I(E - I \\cdot R_{\\text{int}}) = E \\cdot I - R_{\\text{int}} \\cdot I^2} $$<br>该式为关于 \\(I\\) 的二次函数。求导求极值：<br>$$ \\color{#c0392b}{\\frac{\\mathrm{d}P_{\\text{out}}}{\\mathrm{d}I} = E - 2 \\cdot I \\cdot R_{\\text{int}} = 0 \\implies I = \\frac{E}{2 R_{\\text{int}}}} $$<br>代入得最大输出功率：<br>$$ \\color{#c0392b}{P_{\\text{max}} = \\frac{E^2}{4 \\cdot R_{\\text{int}}}} $$<br><strong>讨论：</strong>在给定电动势 \\(E\\) 的条件下，最大输出功率与内阻 \\(R_{\\text{int}}\\) 成反比。降低内阻是提高功率密度的主要途径。需注意以上推导基于线性内阻假设；实际电池在大电流下内阻可能偏离线性，此时实际最大功率低于上述预测值。'
+    },
+    'life': {
+        t: '循环衰减与日历寿命 (Life & Self-Discharge)',
+        c: '<strong>循环容量衰减（Degradation）：</strong>电池在循环使用中，可逆容量随循环次数或时间逐渐降低。容量损失 \\( \\color{#5b9fd4}{Q_{\\text{loss}}} \\) 的经验动力学表达式常采用以下形式：<br>$$ \\color{#c0392b}{Q_{\\text{loss}} = A \\cdot \\exp\\left( -\\frac{E_a}{R \\cdot T} \\right) \\cdot t^z} $$<br>其中 \\( \\color{#5b9fd4}{A} \\) 为指前因子，\\( \\color{#5b9fd4}{E_a} \\) 为容量衰减主导过程的表观活化能，\\( \\color{#5b9fd4}{t} \\) 为时间或等效循环数，\\( \\color{#5b9fd4}{z} \\) 为时间幂指数。当 \\( \\color{#5b9fd4}{z \\approx 0.5} \\) 时，衰减近似遵循平方根时间关系，通常对应于 SEI 膜的持续生长，其速率受锂离子在 SEI 层中的固相扩散控制；当 \\( \\color{#5b9fd4}{z \\approx 1} \\) 时，衰减近似线性，可能对应于表面副反应主导的容量消耗。<br><br><strong>日历搁置自放电（Self-Discharge）：</strong>电池在搁置状态下，内部仍存在缓慢副反应（如过渡金属离子溶解与穿梭、隔膜微短路等），导致开路状态下容量的持续减少。\\(t\\) 时刻的剩余容量 \\( \\color{#5b9fd4}{C_{\\text{remaining}}} \\) 可表示为初始容量减去由寄生电流 \\( \\color{#5b9fd4}{I_{\\text{para}}} \\) 消耗的容量：<br>$$ \\color{#c0392b}{C_{\\text{remaining}}(t) = C_0 - \\int_{0}^{t_{\\text{rest}}} I_{\\text{para}}(\\tau) \\mathrm{d}\\tau} $$<br><strong>讨论：</strong>由衰减经验式可知，容量衰减速率随温度升高呈指数增大趋势，降低储存与使用温度可减缓衰减。在电解液中引入成膜添加剂形成致密稳定的 SEI/CEI 膜，可增大副反应的表观活化能 \\(E_a\\)，降低衰减速率。减小寄生电流（如提高隔膜品质以减少微短路、抑制过渡金属溶解与穿梭）可改善日历寿命。'
+    },
+    'soc': {
+        t: 'SOC与DOD (State of Charge & Depth of Discharge)',
+        c: '<strong>SOC（荷电状态）</strong>定义为电池当前剩余容量与其标称容量的比值：<br><br>$$ \\color{#c0392b}{SOC = \\frac{C_{remaining}}{C_{nominal}} \\times 100\\%} $$<br><strong>DOD（放电深度）</strong>与SOC互补：<br><br>$$ \\color{#c0392b}{DOD = 1 - SOC = \\frac{C_{discharged}}{C_{nominal}} \\times 100\\%} $$<br><br>BMS常用<strong>OCV-SOC拟合曲线</strong>结合电流积分法进行估算。开路电压（OCV）与SOC的映射关系因材料体系而异：LFP的OCV-SOC曲线在中段平台区斜率极小，估算精度较低；而NCM的OCV-SOC曲线单调性较好，估算精度较高。<br><br><strong>讨论：</strong>SOC的准确估算对防止过充过放、延长电池寿命至关重要。典型的BMS采用安时积分+OCV校准+扩展卡尔曼滤波（EKF）的复合方法，将SOC估算误差控制在±3%以内。'
+    },
+    'ce': {
+        t: '库仑效率 (Coulombic Efficiency)',
+        c: '<strong>库仑效率（CE）</strong>定义为放电电荷量与充电电荷量的比值：<br><br>$$ \\color{#c0392b}{CE = \\frac{Q_{dis}}{Q_{ch}} \\times 100\\%} $$<br><strong>首次库仑效率（ICE）</strong>特指第一个充放电循环的CE，反映初始不可逆容量损失：<br><br>$$ \\color{#c0392b}{ICE = \\frac{C_{dis,1st}}{C_{ch,1st}} \\times 100\\%} $$<br>ICE低于100%的根本原因是首次充电过程中活性锂被不可逆消耗于以下过程：<br>1) SEI膜形成（主要消耗途径）<br>2) 电解液分解产气<br>3) 与负极/正极中杂质反应<br><br><strong>讨论：</strong>不同负极材料的ICE差异显著：石墨约92~95%，硅碳约85~92%，钛酸锂可达99.9%以上。低ICE材料需要通过正极预锂化或负极过量设计来补偿初始锂损失。'
+    },
+    'heat': {
+        t: '热力学可逆热 (Thermodynamic Reversible Heat)',
+        c: '根据<strong>电化学热力学</strong>，电池在可逆充放电过程中，由于反应熵变引起的热效应称为可逆热（或Entropic Heat）：<br><br>$$ \\color{#c0392b}{Q_{rev} = I \\cdot T \\cdot \\frac{dE}{dT}} $$<br>其中，\\( \\color{#5b9fd4}{I} \\) 为电流（正值为充电），\\( \\color{#5b9fd4}{T} \\) 为绝对温度（K），\\( \\color{#5b9fd4}{\\frac{dE}{dT}} \\) 为电动势的温度系数（V/K）。<br><br>电池总发热功率由两部分构成：<br>$$ \\color{#c0392b}{P_{heat} = I^2 R_{internal} + I \\cdot T \\cdot \\frac{dE}{dT}} $$<br><br>当 \\(\\frac{dE}{dT} < 0\\) 时放电放热（如NCM、LCO）；<br>当 \\(\\frac{dE}{dT} \\approx 0\\) 时可逆热极小（如LFP）；<br>当 \\(\\frac{dE}{dT} > 0\\) 时放电吸热（部分LTO体系）。<br><br><strong>讨论：</strong>在大倍率工况下，不可逆焦耳热（I²R）占主导；在低倍率或小电流下，可逆热的影响更为显著。TMS设计需综合考虑两种热源。'
+    },
+    'ee': {
+        t: '能量效率 (Round-Trip Energy Efficiency)',
+        c: '<strong>能量效率（RET）</strong>定义为放电输出能量与充电输入能量的比值：<br><br>$$ \\color{#c0392b}{\\eta_{energy} = \\frac{W_{dis}}{W_{ch}} \\times 100\\% = \\frac{\\int_{dis} V(t) I(t) dt}{\\int_{ch} V(t) I(t) dt} \\times 100\\%} $$<br>在恒流近似下可简化为：<br>$$ \\color{#c0392b}{\\eta_{energy} \\approx \\frac{C_{dis} \\times \\overline{V}_{dis}}{C_{ch} \\times \\overline{V}_{ch}} = \\frac{\\overline{V}_{dis}}{\\overline{V}_{ch}} \\times \\frac{C_{dis}}{C_{ch}}} $$<br>由于库仑效率接近100%，能量效率主要受电压效率（\\(\\overline{V}_{dis}/\\overline{V}_{ch}\\)）控制，后者由极化内阻决定。<br><br><strong>讨论：</strong>能量效率直接决定储能系统的运行经济性。LFP系统能量效率约92~95%，LTO可达97~98%。效率每降低1%，全生命周期度电成本（LCOS）约增加2~3%。降低内阻是提升能量效率的根本途径。'
+    }
+};
+
+        function openDeriv(key) {
+            if (!derivData || !derivData[key]) return;
+            const data = derivData[key];
+            document.getElementById('deriv-title').innerHTML = data.t;
+            document.getElementById('deriv-content').innerHTML = data.c;
+            document.getElementById('deriv-overlay').style.display = 'flex';
+            if (window.MathJax) {
+                MathJax.typesetPromise([document.getElementById('deriv-content')]).catch(function (err) {
+                    console.log('MathJax 渲染失败: ' + err.message);
+                });
+            }
+        }
+
+    </script>
+</body>
+</html>
+

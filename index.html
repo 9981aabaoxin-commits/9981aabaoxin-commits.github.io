@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>储能电池技术 · 网站开发</title>
+    <meta name="description" content="储能电池技术网站开发作品展 · 按学年归档">
+    <link rel="stylesheet" href="assets/css/style.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#year-2026">跳到学生作品展</a>
+
+    <header class="cover-section" id="cover">
+      <nav class="course-nav" aria-label="课程首页导航">
+        <a class="course-brand" href="#cover" aria-label="返回作品展第一页">
+          <img src="assets/images/ncepu-baoding-logo.png" alt="华北电力大学（保定）logo">
+          <span>
+            <strong>储能电池技术</strong>
+            <small>网站开发</small>
+          </span>
+        </a>
+        <div class="course-nav-links">
+          <a href="#year-nav">学年归档</a>
+          <a href="#filters">项目筛选</a>
+          <a href="#year-2026">学生作品</a>
+          <a href="#year-2027">待更新</a>
+        </div>
+      </nav>
+
+      <div class="cover-inner">
+        <div class="cover-copy">
+          <h1>储能电池技术</h1>
+          <p class="cover-subtitle">网站开发</p>
+          <p class="cover-description">
+            学生网站作品展 · 按学年归档。汇集课程中学生围绕锂离子、钠离子、固态、锌离子与储能系统等主题完成的网站开发作品。
+          </p>
+          <div class="cover-actions term-links" aria-label="学年入口">
+            <a class="button primary" href="#year-2026">2026学年</a>
+            <a class="button primary" href="#year-2027">2027学年</a>
+            <a class="button primary" href="#year-2028">2028学年</a>
+            <a class="button primary" href="#filters">搜索与筛选</a>
+          </div>
+        </div>
+
+        <aside class="cover-side" aria-label="课程信息">
+          <section>
+            <h2>课程信息</h2>
+            <p>储能电池技术</p>
+            <p>网站开发作品展示</p>
+          </section>
+          <section>
+            <h2>作品归档</h2>
+            <p><strong id="stat-projects">2</strong> 件学生网站作品已收录</p>
+            <p>优秀作品与全部作品按学年展示。</p>
+          </section>
+        </aside>
+      </div>
+    </header>
+
+    <main>
+      <section class="site-section year-navigation" id="year-nav" aria-labelledby="year-nav-title">
+        <div class="section-heading">
+          <p class="section-kicker">学年归档</p>
+          <h2 id="year-nav-title">按学年浏览课程作品</h2>
+        </div>
+        <nav class="year-nav-list" id="year-nav-list" aria-label="学年归档"></nav>
+      </section>
+
+      <section class="site-section filter-section" id="filters" aria-labelledby="filters-title">
+        <div class="section-heading split">
+          <div>
+            <p class="section-kicker">搜索与筛选</p>
+            <h2 id="filters-title">筛选学生作品展</h2>
+          </div>
+          <p class="result-count" id="result-count">0 个项目</p>
+        </div>
+
+        <form class="filters" id="project-filters" role="search">
+          <label>
+            <span>关键词搜索</span>
+            <input id="search-input" type="search" placeholder="输入题目、成员、描述">
+          </label>
+          <label>
+            <span>学年</span>
+            <select id="year-filter">
+              <option value="all">全部</option>
+            </select>
+          </label>
+          <label>
+            <span>主题</span>
+            <select id="topic-filter">
+              <option value="all">全部</option>
+            </select>
+          </label>
+          <label class="check-filter">
+            <input id="featured-filter" type="checkbox">
+            <span>仅看优秀作品</span>
+          </label>
+          <button class="button filter-reset" type="reset">重置</button>
+        </form>
+      </section>
+
+      <section class="site-section year-section" id="year-2026" aria-labelledby="year-2026-title" data-year-section="2026">
+        <div class="section-heading split">
+          <div>
+            <p class="section-kicker">2026学年</p>
+            <h2 id="year-2026-title">2026学年学生作品展</h2>
+          </div>
+          <p class="year-summary" data-year-count="2026">待更新</p>
+        </div>
+        <div class="project-block">
+          <div class="block-heading">
+            <h3>优秀作品</h3>
+            <span>Featured Works</span>
+          </div>
+          <div class="work-grid" data-render="featured" data-year="2026"></div>
+        </div>
+        <div class="project-block">
+          <div class="block-heading">
+            <h3>全部作品</h3>
+            <span>All Works</span>
+          </div>
+          <div class="work-grid" data-render="all" data-year="2026"></div>
+        </div>
+      </section>
+
+      <section class="site-section year-section" id="year-2027" aria-labelledby="year-2027-title" data-year-section="2027">
+        <div class="section-heading split">
+          <div>
+            <p class="section-kicker">2027学年</p>
+            <h2 id="year-2027-title">2027学年学生作品展</h2>
+          </div>
+          <p class="year-summary" data-year-count="2027">待更新</p>
+        </div>
+        <div class="project-block">
+          <div class="block-heading">
+            <h3>优秀作品</h3>
+            <span>Featured Works</span>
+          </div>
+          <div class="work-grid" data-render="featured" data-year="2027"></div>
+        </div>
+        <div class="project-block">
+          <div class="block-heading">
+            <h3>全部作品</h3>
+            <span>All Works</span>
+          </div>
+          <div class="work-grid" data-render="all" data-year="2027"></div>
+        </div>
+      </section>
+
+      <section class="site-section year-section" id="year-2028" aria-labelledby="year-2028-title" data-year-section="2028">
+        <div class="section-heading split">
+          <div>
+            <p class="section-kicker">2028学年</p>
+            <h2 id="year-2028-title">2028学年学生作品展</h2>
+          </div>
+          <p class="year-summary" data-year-count="2028">待更新</p>
+        </div>
+        <div class="project-block">
+          <div class="block-heading">
+            <h3>优秀作品</h3>
+            <span>Featured Works</span>
+          </div>
+          <div class="work-grid" data-render="featured" data-year="2028"></div>
+        </div>
+        <div class="project-block">
+          <div class="block-heading">
+            <h3>全部作品</h3>
+            <span>All Works</span>
+          </div>
+          <div class="work-grid" data-render="all" data-year="2028"></div>
+        </div>
+      </section>
+    </main>
+
+    <button class="back-to-top" id="back-to-top" type="button" aria-label="返回顶部">返回顶部</button>
+
+    <footer class="site-footer">
+      <p>储能电池技术 · 网站开发</p>
+      <p>HTML · CSS · Vanilla JavaScript · JSON</p>
+    </footer>
+
+    <script id="project-data-fallback" type="application/json">
+{
+  "projects": [
+    {
+      "year": 2026,
+      "group": "group01",
+      "title": "锂离子电池性能指标网站",
+      "members": ["2026年度第一组"],
+      "keywords": ["锂离子电池", "性能指标", "储能电池", "容量", "能量密度"],
+      "description": "围绕锂离子电池容量、电压、能量密度、功率密度等性能指标构建的学生网站作品。",
+      "date": "2026-06-13",
+      "url": "works/2026/group01/锂离子电池性能指标网站.html",
+      "cover": "assets/covers/2026-group01-work01.png",
+      "category": "锂离子电池",
+      "featured": true
+    },
+    {
+      "year": 2026,
+      "group": "group01",
+      "title": "锂离子电池性能指标分析系统",
+      "members": ["2026年度第一组"],
+      "keywords": ["锂离子电池", "性能分析", "正负极材料", "储能材料", "理论计算"],
+      "description": "面向储能材料计算与电池性能分析的学生网站作品，展示核心性能指标、材料参数与应用导向设计原则。",
+      "date": "2026-06-14",
+      "url": "works/2026/group01/锂离子电池性能指标网站（最终版）.html",
+      "cover": "assets/covers/2026-group01-work02.png",
+      "category": "锂离子电池",
+      "featured": false
+    }
+  ]
+}
+    </script>
+    <script src="assets/js/main.js" defer></script>
+  </body>
+</html>

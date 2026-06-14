@@ -1,0 +1,36 @@
+{
+  "course": {
+    "name": "全电技术 / 储能电池技术",
+    "siteTitle": "全电技术课程 AI 实践成果展示平台",
+    "subtitle": "储能电池技术学生网站作品展 · 按学年归档",
+    "updated": "2026-06-14"
+  },
+  "projects": [
+    {
+      "year": 2026,
+      "group": "group01",
+      "title": "锂离子电池性能指标网站",
+      "members": ["2026年度第一组"],
+      "keywords": ["锂离子电池", "性能指标", "储能电池", "容量", "能量密度"],
+      "description": "围绕锂离子电池容量、电压、能量密度、功率密度等性能指标构建的学生网站作品。",
+      "date": "2026-06-13",
+      "url": "works/2026/group01/锂离子电池性能指标网站.html",
+      "cover": "assets/covers/2026-group01-work01.png",
+      "category": "锂离子电池",
+      "featured": true
+    },
+    {
+      "year": 2026,
+      "group": "group01",
+      "title": "锂离子电池性能指标分析系统",
+      "members": ["2026年度第一组"],
+      "keywords": ["锂离子电池", "性能分析", "正负极材料", "储能材料", "理论计算"],
+      "description": "面向储能材料计算与电池性能分析的学生网站作品，展示核心性能指标、材料参数与应用导向设计原则。",
+      "date": "2026-06-14",
+      "url": "works/2026/group01/锂离子电池性能指标网站（最终版）.html",
+      "cover": "assets/covers/2026-group01-work02.png",
+      "category": "锂离子电池",
+      "featured": false
+    }
+  ]
+}
